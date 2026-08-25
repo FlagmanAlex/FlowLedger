@@ -1,0 +1,35 @@
+{
+  "name": "flowledger",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "install:all": "npm install --workspace=client && npm install --workspace=server && npm install --workspace=interfaces && npm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FlagmanAlex/FlowLedger.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FlagmanAlex/FlowLedger/issues"
+  },
+  "homepage": "https://github.com/FlagmanAlex/FlowLedger#readme",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "interfaces"
+  ],
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
