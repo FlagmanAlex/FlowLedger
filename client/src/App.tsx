@@ -1,28 +1,49 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layouts/MainLayout';
+import { AuthLayout } from '@/components/layouts/AuthLayout';
+import { Login } from '@/components/screens/Login';
 import { Dashboard } from '@/components/screens/Dashboard';
 import { Transactions } from '@/components/screens/Transactions';
+import { Wallets } from '@/components/screens/Wallets';
+import { Categories } from '@/components/screens/Categories';
+import { Reports } from '@/components/screens/Reports';
 import { Settings } from '@/components/screens/Settings';
 import { transactionsAction } from '@/routes/transactions.action';
 
+const queryClient = new QueryClient();
+
 const router = createBrowserRouter([
+  { path: '/login', element: <Login /> },
   {
     path: '/',
-    element: <MainLayout />,
+    element: <AuthLayout />,
     children: [
-      { index: true, element: <Dashboard /> },
       {
-        path: 'transactions',
-        element: <Transactions />,
-        action: transactionsAction,
+        element: <MainLayout />,
+        children: [
+          { index: true, element: <Dashboard /> },
+          {
+            path: 'transactions',
+            element: <Transactions />,
+            action: transactionsAction,
+          },
+          { path: 'wallets', element: <Wallets /> },
+          { path: 'categories', element: <Categories /> },
+          { path: 'reports', element: <Reports /> },
+          { path: 'settings', element: <Settings /> },
+        ],
       },
-      { path: 'settings', element: <Settings /> },
     ],
   },
 ]);
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
 }
 
 export default App;

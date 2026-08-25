@@ -1,8 +1,14 @@
 node_modules/
 dist/
 build/
+lib/
 .vite/
 .env
 .env.local
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 *.log
 .DS_Store
+.expo/
