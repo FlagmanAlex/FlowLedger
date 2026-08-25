@@ -64,6 +64,25 @@ npm run build:control-plane-functions # сборка Cloud Functions control-pla
 Перед запуском клиента скопируйте `client/.env.example` в `client/.env` и укажите конфиг вашего
 control-plane Firebase-проекта.
 
+### Сборка Android APK для тестирования
+
+Через Expo Application Services (EAS) — сборка идёт в облаке, локальный Android SDK не нужен.
+Профиль `preview` в `mobile/eas.json` уже настроен на `buildType: apk` (не `.aab`, годится для
+установки вручную на телефон):
+
+```bash
+cd mobile
+npx eas-cli login              # один раз — бесплатный аккаунт expo.dev
+npx eas-cli init                # привязывает проект к вашему аккаунту EAS (первый раз)
+npx eas-cli build -p android --profile preview
+```
+
+По завершении сборки EAS даёт ссылку/QR-код на скачивание `.apk` — переносите на телефон и
+устанавливаете (разрешив установку из неизвестных источников). Для быстрой проверки UI без сборки
+APK можно также использовать Expo Go: `npx expo start` в `mobile/` и сканировать QR-код —
+но учтите, что Google Sign-In на мобильном ещё не реализован (см. «Статус» ниже), рабочий путь
+входа сейчас — `ConnectScreen` (вставка ссылки-приглашения из веб-версии).
+
 ## Статус
 
 MVP-архитектура реализована (см. `tasks.md`). Не хватает: полноценного native Google Sign-In с
