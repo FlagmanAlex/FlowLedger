@@ -22,12 +22,12 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "firebaseApiKey": "",
-      "firebaseAuthDomain": "",
-      "firebaseProjectId": "",
-      "firebaseStorageBucket": "",
-      "firebaseMessagingSenderId": "",
-      "firebaseAppId": ""
+      "controlPlaneFirebaseApiKey": "",
+      "controlPlaneFirebaseAuthDomain": "",
+      "controlPlaneFirebaseProjectId": "",
+      "controlPlaneFirebaseStorageBucket": "",
+      "controlPlaneFirebaseMessagingSenderId": "",
+      "controlPlaneFirebaseAppId": ""
     }
   }
 }

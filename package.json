@@ -6,11 +6,12 @@
   "scripts": {
     "dev:client": "npm run dev --workspace=client",
     "dev:emulators": "firebase emulators:start",
+    "dev:control-plane-emulators": "cd control-plane && firebase emulators:start",
     "dev": "concurrently \"npm:dev:emulators\" \"npm:dev:client\"",
     "build:client": "npm run build --workspace=client",
-    "build:functions": "npm run build --workspace=functions",
+    "build:control-plane-functions": "npm run build --workspace=@flowledger/control-plane-functions",
     "dev:mobile": "npm run start --workspace=mobile",
-    "install:all": "npm install --workspace=client && npm install --workspace=functions && npm install --workspace=interfaces && npm install --workspace=mobile && npm install --workspace=shared && npm install"
+    "install:all": "npm install --workspace=client && npm install --workspace=@flowledger/control-plane-functions && npm install --workspace=interfaces && npm install --workspace=mobile && npm install --workspace=shared && npm install"
   },
   "repository": {
     "type": "git",
@@ -27,7 +28,7 @@
   "private": true,
   "workspaces": [
     "client",
-    "functions",
+    "control-plane/functions",
     "interfaces",
     "mobile",
     "shared"

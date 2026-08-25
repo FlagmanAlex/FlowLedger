@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layouts/MainLayout';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { Login } from '@/components/screens/Login';
+import { ConnectingScreen } from '@/components/screens/ConnectingScreen';
+import { JoinScreen } from '@/components/screens/JoinScreen';
 import { Dashboard } from '@/components/screens/Dashboard';
 import { Transactions } from '@/components/screens/Transactions';
 import { Wallets } from '@/components/screens/Wallets';
@@ -15,6 +17,8 @@ const queryClient = new QueryClient();
 
 const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
+  { path: '/connecting', element: <ConnectingScreen /> },
+  { path: '/join', element: <JoinScreen /> },
   {
     path: '/',
     element: <AuthLayout />,

@@ -1,9 +1,9 @@
-import { addDoc, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
 import type { Wallet } from '@flowledger/interfaces';
 import { walletsCollection } from './collections.js';
 
-export async function listWallets(tenantId: string): Promise<Wallet[]> {
-  const snap = await getDocs(query(walletsCollection(), where('tenantId', '==', tenantId)));
+export async function listWallets(): Promise<Wallet[]> {
+  const snap = await getDocs(walletsCollection());
   return snap.docs.map((d) => d.data());
 }
 

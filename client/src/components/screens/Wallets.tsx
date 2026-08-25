@@ -12,9 +12,9 @@ import {
 
 export function Wallets() {
   const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { data: wallets, isLoading } = useWallets(user?.tenantId);
-  const createWallet = useCreateWallet(user?.tenantId);
-  const archiveWallet = useArchiveWallet(user?.tenantId);
+  const { data: wallets, isLoading } = useWallets(Boolean(user));
+  const createWallet = useCreateWallet();
+  const archiveWallet = useArchiveWallet();
 
   const { register, handleSubmit, reset, formState } = useForm<WalletFormValues>({
     resolver: zodResolver(walletFormSchema),
@@ -23,7 +23,7 @@ export function Wallets() {
 
   async function onSubmit(values: WalletFormValues) {
     if (!user) return;
-    await createWallet.mutateAsync({ ...values, tenantId: user.tenantId });
+    await createWallet.mutateAsync(values);
     reset();
   }
 

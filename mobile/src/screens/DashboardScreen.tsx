@@ -4,7 +4,7 @@ import { useAuthUser } from '../navigation/AuthContext';
 
 export function DashboardScreen() {
   const { user } = useAuthUser();
-  const { summary, isLoading } = useDashboard(user?.tenantId);
+  const { summary, isLoading } = useDashboard(Boolean(user));
 
   if (isLoading || !summary) {
     return (

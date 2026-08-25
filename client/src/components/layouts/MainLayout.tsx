@@ -1,5 +1,5 @@
 import { Outlet, Link } from 'react-router-dom';
-import { signOut, useAuth } from '@flowledger/shared';
+import { signOutCustomer, useAuth } from '@flowledger/shared';
 
 export function MainLayout() {
   const { user } = useAuth();
@@ -13,7 +13,7 @@ export function MainLayout() {
         <Link to="/categories">Категории</Link>
         <Link to="/reports">Отчёты</Link>
         <Link to="/settings">Настройки</Link>
-        {user && <button type="button" onClick={() => signOut()}>Выйти</button>}
+        {user && <button type="button" onClick={() => signOutCustomer()}>Выйти</button>}
       </nav>
       <main>
         <Outlet context={{ user }} />

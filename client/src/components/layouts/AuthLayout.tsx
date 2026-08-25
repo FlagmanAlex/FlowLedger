@@ -2,10 +2,11 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@flowledger/shared';
 
 /**
- * Wraps every protected route. While the onUserCreate Cloud Function is
- * still provisioning a brand-new user's tenant, useAuth briefly reports a
- * signed-in Firebase user but no tenant claim yet — show a spinner instead
- * of bouncing them back to /login.
+ * Wraps every route that needs an active CUSTOMER project connection
+ * (see shared/src/firebase/customer.ts). A brand-new user lands here only
+ * after ConnectingScreen has provisioned/connected their project and
+ * signed them in there — if that hasn't happened yet, bounce to /login to
+ * restart the flow rather than showing a broken app shell.
  */
 export function AuthLayout() {
   const { user, loading } = useAuth();

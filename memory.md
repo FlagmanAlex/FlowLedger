@@ -1,62 +1,80 @@
 # FlowLedger — Memory / Architecture Notes
 
 ## Project
-FlowLedger — мультитенантный учёт доходов/расходов (personal/family finance tracker), с web- и
-мобильным (React Native) клиентом.
+FlowLedger — учёт доходов/расходов, продаётся как продукт: **каждый покупатель подключает
+собственный, изолированный Firebase-проект** (BYO-Firebase), а не пишет в общую базу вендора.
+Web- и мобильный (React Native/Expo) клиенты.
 
-## Стек (актуальный, после пивота с MongoDB+Express на Firebase)
-- **БД**: Cloud Firestore (мультитенантная, единая база, `tenantId` в каждом документе)
-- **Auth**: Firebase Authentication, только Google Sign-In
-- **Backend**: Firebase Cloud Functions (`functions/`) — только там, где логика не может жить в
-  Security Rules: провижининг tenant при первом входе, invite-flow, денормализация баланса кошелька
-- **Client (web)**: React + Vite + TS, react-router-dom (actions для форм), @tanstack/react-query,
-  react-hook-form + zod, recharts (графики)
-- **Mobile**: Expo (React Native) + TS, @react-navigation, тот же @flowledger/shared
-- **shared/**: общий пакет для client+mobile — firebase init/auth, repositories (типизированный
-  Firestore CRUD), React Query хуки, zod-схемы форм
-- **interfaces/**: общие TS-типы (Tenant, User, Wallet, Category, Transaction, DashboardSummary)
-- Package manager: npm workspaces (единый lock-файл в корне): client, functions, interfaces,
-  mobile, shared
+## Стек (после BYO-Firebase пивота)
+- **control-plane/** — Firebase-проект, которым владеет ВЕНДОР (не покупатель). Единственная его
+  роль — идентифицировать покупателя (Google Sign-In) и запустить `createCustomerProject` Cloud
+  Function, которая от имени покупателя (его OAuth-токен, scope `cloud-platform`+`firebase`)
+  создаёт ему отдельный Firebase-проект через Google Cloud Management API. Хранит только
+  `customers/{uid}` (status/projectId/firebaseConfig) — никаких продуктовых данных.
+- **Проект покупателя** — Firestore + Firebase Auth (Google Sign-In), БЕЗ Cloud Functions (они
+  требуют платный Blaze-план у покупателя; вместо этого — клиентский `runTransaction` для
+  денормализованного баланса кошелька). Одна база = один покупатель/семья, поэтому `tenantId` не
+  нужен — Rules проверяют членство через `workspace/config.memberUids`.
+- **shared/**: два раздельных именованных Firebase App instance —
+  `firebase/controlPlane.ts` (статичный конфиг, вход/провижининг) и `firebase/customer.ts`
+  (динамический конфиг, переинициализируется при переключении между "своим" и приглашённым
+  проектом). Repositories/hooks работают через `getCustomerFirestore()`.
+- **interfaces/**: без `tenantId`; `workspace.interface.ts` (WorkspaceConfig/ConnectedWorkspace),
+  `customer.interface.ts` (CustomerRecord/ProvisioningStatus/FirebaseWebAppConfig)
+- **client/** (React+Vite+TS): `Login` (control-plane Google) → `ConnectingScreen`
+  (провижининг/подключение) → защищённые маршруты. `JoinScreen` — подключение к чужому проекту по
+  ссылке-приглашению.
+- **mobile/** (Expo/React Native): та же архитектура, но native Google Sign-In с elevated scope не
+  реализован (см. TODO) — временно подключается через вставку той же ссылки-приглашения
+  (`ConnectScreen`), owner-провижининг только через веб.
 
 ## Архитектурные решения
-- **Мультитенантность**: одна Firestore-база, плоские top-level коллекции (`wallets`,
-  `categories`, `transactions`, ...) с полем `tenantId`. Изоляция — Firestore Security Rules,
-  сверяющие `tenantId` документа с custom claim `tenantId` в JWT пользователя (не через отдельные
-  БД/namespace на клиента — см. `plans/00-initial-setup.md` и обсуждение в истории задач).
-- **Провижининг tenant**: `functions/src/auth/onUserCreate.ts` — при первом Google-входе триггер
-  создаёт `tenants/{id}` и выставляет custom claims (`tenantId`, `role: 'owner'`) через Admin SDK.
-  Клиент дожидается появления claim на токене с ретраями (`shared/src/firebase/auth.ts`,
-  `resolveAuthUserWithRetry`) — сразу после первого входа claim ещё не готов.
-- **Шаринг tenant'а**: `createInvite`/`acceptInvite` callable-функции добавляют uid в
-  `tenants/{id}.memberUids` и проставляют тот же `tenantId` claim приглашённому — так семья/команда
-  видит одни и те же кошельки/категории/транзакции.
-- **Баланс кошелька**: денормализован (`wallets.balance`), пересчитывается атомарно
-  Cloud Function-триггером `onTransactionWritten` (`FieldValue.increment`) на запись/правку/удаление
-  транзакции — клиент никогда сам не считает баланс, это надёжнее при offline-очереди на мобильном.
-- **Offline-first (mobile)**: Firestore SDK с `persistentLocalCache` — офлайн-записи кэшируются
-  локально и синхронизируются автоматически при восстановлении сети, без кастомного sync-слоя.
-- **Формы через react-router-dom actions** (web): страницы не обрабатывают submit вручную —
-  `<Form>` + экспортируемые `action`-функции в `createBrowserRouter`.
-- **Модель операций**: единый журнал транзакций со знаковой суммой + `type: income|expense|transfer`,
-  а не два отдельных журнала.
-- **server/ (Express+MongoDB) удалён** — заменён на `functions/` + прямой доступ клиента к
-  Firestore (см. обсуждение в истории задач: mongo→Firebase пивот).
+- **Мультитенантность = отдельные Firebase-проекты**, не `tenantId`-фильтрация внутри одной базы.
+  Изоляция физическая: чужие данные физически не в той же базе.
+- **Провижининг**: `control-plane/functions/src/provisioning/createCustomerProject.ts` —
+  оркестрация Cloud Resource Manager → Service Usage → Firebase Management (`addFirebase`,
+  webApps) → Firestore Admin (создание БД) → Identity Platform (Google Sign-In) → Firebase Rules
+  API (деплой `templates/customer-project/firestore.rules`/`indexes.json`). Всё вызывается с
+  OAuth-токеном ПОКУПАТЕЛЯ — проект создаётся на его billing, не вендора.
+- **Идемпотентность**: `customers/{uid}.status === 'ready'` возвращается сразу без повторного
+  провижининга.
+- **Приглашение участников — без control-plane**: владелец добавляет email в
+  `workspace/config.pendingInviteEmails` (запись в СВОЕЙ Firestore), генерирует ссылку с
+  закодированным `firebaseConfig` (не секрет), приглашённый открывает её → подключается напрямую к
+  проекту владельца → Security Rules пускают его дописать себя в `memberUids`, если
+  `request.auth.token.email` совпадает с приглашённым (Google Sign-In сам кладёт verified email в
+  токен — доп. custom claims/Cloud Functions не нужны).
+- **Баланс кошелька**: клиентский `runTransaction` в `shared/src/repositories/transactions.repo.ts`
+  на create/update/delete — атомарно, без Cloud Function (которые в проекте покупателя не
+  используются вовсе).
+- **Шаблоны Rules/Indexes для проекта покупателя** — источник правды в `templates/customer-project/`,
+  копируются в `control-plane/functions/lib/templates/` при сборке
+  (`control-plane/functions/scripts/sync-templates.js`), т.к. `firebase deploy` пакует только
+  папку `functions/`.
+- **Формы через react-router-dom actions** (web) — не изменилось с MVP.
+- **Модель операций**: единый журнал, signed amount + `type: income|expense|transfer`.
 
 ## Порты / окружение
 - client (Vite dev): 5173
-- Firebase emulators (firestore/auth/functions): см. `firebase.json` (firestore:8080, functions:5001,
-  auth:9099, UI включён)
-- Конфиг Firebase передаётся через `VITE_FIREBASE_*` (client/.env.example) и `app.json.expo.extra`
-  (mobile) — секреты не коммитятся, только `.env.example`.
+- control-plane эмуляторы: firestore:8180, functions:5101, auth:9199 (см.
+  `control-plane/firebase.json`) — отдельные порты от возможных product-эмуляторов, чтобы не
+  конфликтовали при параллельном запуске
+- Конфиг control-plane Firebase — `VITE_CONTROL_PLANE_FIREBASE_*` (client/.env.example),
+  `app.json.expo.extra.controlPlaneFirebase*` (mobile)
 
 ## Известные TODO / ограничения
-- Native (mobile) Google Sign-In не реализован — нужен Google OAuth client ID для Android/iOS в
-  Firebase console, затем `expo-auth-session`/`@react-native-google-signin` → `signInWithCredential`.
-  Сейчас `mobile/src/screens/LoginScreen.tsx` — заглушка.
-- Дашборд-агрегаты считаются на клиенте (`shared/src/hooks/useDashboard.ts`) из окна последних 500
-  транзакций — при росте объёма перенести в Cloud Function-агрегат.
-- Бюджеты, регулярные операции (`recurringTemplates` в модели уже заложены), экспорт CSV/Excel,
-  push-уведомления (FCM), вложения к операциям — не реализованы, см. `plans/`.
+- **Native Google Sign-In с elevated scope не реализован** — mobile-провижининг (создание
+  собственного проекта прямо с телефона) недоступен; временный обход — `ConnectScreen`
+  (вставка ссылки-приглашения, полученной с веба).
+- **Верификация Google OAuth для scope `cloud-platform`** — до прохождения приложение работает
+  только с ~100 тестовыми аккаунтами Google Cloud (ограничение самого Google).
+- Дашборд-агрегаты считаются на клиенте из последних 500 транзакций.
+- Бюджеты, регулярные операции (`recurringTemplates` в модели заложены), экспорт CSV/Excel,
+  push-уведомления, вложения к операциям — не реализованы.
+- `createCustomerProject` — best-effort MVP оркестрации; не покрыт retries на частичный сбой
+  (например, если `addFirebase` прошёл, а `createWebApp` упал) — при `status: 'failed'` повторный
+  вызов начнёт процесс заново, что может дать ошибку "project already exists" на шаге 1. Нужно
+  доработать на идемпотентность каждого шага перед продакшеном.
 
 ## Статус
 См. `tasks.md`.

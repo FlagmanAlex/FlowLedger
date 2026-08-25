@@ -12,9 +12,9 @@ import {
 
 export function Categories() {
   const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { data: categories, isLoading } = useCategories(user?.tenantId);
-  const createCategory = useCreateCategory(user?.tenantId);
-  const deleteCategory = useDeleteCategory(user?.tenantId);
+  const { data: categories, isLoading } = useCategories(Boolean(user));
+  const createCategory = useCreateCategory();
+  const deleteCategory = useDeleteCategory();
 
   const { register, handleSubmit, reset, formState } = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
@@ -23,7 +23,7 @@ export function Categories() {
 
   async function onSubmit(values: CategoryFormValues) {
     if (!user) return;
-    await createCategory.mutateAsync({ ...values, tenantId: user.tenantId });
+    await createCategory.mutateAsync(values);
     reset();
   }
 

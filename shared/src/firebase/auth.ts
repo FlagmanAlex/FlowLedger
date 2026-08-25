@@ -5,79 +5,76 @@ import {
   signOut as firebaseSignOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
-import type { AuthUser, TenantRole } from '@flowledger/interfaces';
-import { getFirebaseAuth } from './app.js';
+import type { AuthUser } from '@flowledger/interfaces';
+import { getControlPlaneAuth } from './controlPlane.js';
+import { getCustomerAuth } from './customer.js';
 
-/**
- * Web sign-in flow. Native (Expo) apps use a different provider flow
- * (expo-auth-session / Google native SDK) but land on the same Firebase
- * Auth user + custom claims, so downstream code (hooks, repositories) is
- * identical across platforms.
- */
-export async function signInWithGoogleWeb(): Promise<FirebaseUser> {
-  const auth = getFirebaseAuth();
-  const provider = new GoogleAuthProvider();
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
-}
-
-export async function signOut(): Promise<void> {
-  await firebaseSignOut(getFirebaseAuth());
-}
-
-const TENANT_CLAIM_RETRY_DELAYS_MS = [500, 1000, 2000, 3000, 5000];
-
-async function toAuthUser(user: FirebaseUser, forceRefresh = false): Promise<AuthUser | null> {
-  const tokenResult = await user.getIdTokenResult(forceRefresh);
-  const tenantId = tokenResult.claims.tenantId as string | undefined;
-  const role = tokenResult.claims.role as TenantRole | undefined;
-
-  if (!tenantId || !role) {
-    return null;
-  }
-
+function toAuthUser(user: FirebaseUser): AuthUser {
   return {
     uid: user.uid,
     email: user.email ?? '',
     displayName: user.displayName ?? '',
     photoURL: user.photoURL ?? undefined,
-    tenantId,
-    role,
+    // Resolved separately from workspace/config.memberUids — see
+    // shared/src/hooks/useWorkspace.ts — since it's project-local state,
+    // not something Firebase Auth knows about.
+    role: 'member',
   };
+}
+
+/** Basic Google sign-in against the control-plane project, just to
+ *  identify the customer (no elevated scopes). */
+export async function signInControlPlaneWithGoogle(): Promise<FirebaseUser> {
+  const result = await signInWithPopup(getControlPlaneAuth(), new GoogleAuthProvider());
+  return result.user;
 }
 
 /**
- * The onUserCreate Cloud Function sets tenantId/role custom claims shortly
- * after first sign-in, but they aren't on the token yet at that instant.
- * Retry with a forced token refresh a few times before giving up, so a
- * brand-new user isn't bounced back to /login while their tenant is still
- * being provisioned.
+ * Re-prompts the same user for the extra OAuth scopes needed to call the
+ * Firebase/Google Cloud Management APIs on their behalf (project creation,
+ * enabling services, deploying rules) — see
+ * control-plane/functions/src/provisioning/. Returns the OAuth access
+ * token to pass into the createCustomerProject callable; nothing is
+ * persisted, it's used once for that call.
  */
-async function resolveAuthUserWithRetry(user: FirebaseUser): Promise<AuthUser | null> {
-  let resolved = await toAuthUser(user);
-  for (const delay of TENANT_CLAIM_RETRY_DELAYS_MS) {
-    if (resolved) return resolved;
-    await new Promise((r) => setTimeout(r, delay));
-    resolved = await toAuthUser(user, true);
+export async function requestCloudPlatformAccessToken(): Promise<string> {
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/cloud-platform');
+  provider.addScope('https://www.googleapis.com/auth/firebase');
+
+  const result = await signInWithPopup(getControlPlaneAuth(), provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (!credential?.accessToken) {
+    throw new Error('Google did not return an access token for the requested scopes.');
   }
-  return resolved;
+  return credential.accessToken;
 }
 
-export function subscribeToAuthUser(callback: (user: AuthUser | null) => void): () => void {
-  const auth = getFirebaseAuth();
-  let cancelled = false;
+/** Sign-in against a connected customer project (owner's own, or one
+ *  joined via an invite link) — see shared/src/firebase/customer.ts. */
+export async function signInCustomerWithGoogle(): Promise<FirebaseUser> {
+  const result = await signInWithPopup(getCustomerAuth(), new GoogleAuthProvider());
+  return result.user;
+}
 
-  const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
-    if (!firebaseUser) {
-      callback(null);
-      return;
-    }
-    const resolved = await resolveAuthUserWithRetry(firebaseUser);
-    if (!cancelled) callback(resolved);
+export async function signOutControlPlane(): Promise<void> {
+  await firebaseSignOut(getControlPlaneAuth());
+}
+
+export async function signOutCustomer(): Promise<void> {
+  await firebaseSignOut(getCustomerAuth());
+}
+
+export function subscribeToControlPlaneAuthUser(
+  callback: (user: FirebaseUser | null) => void,
+): () => void {
+  return onIdTokenChanged(getControlPlaneAuth(), callback);
+}
+
+export function subscribeToCustomerAuthUser(
+  callback: (user: AuthUser | null) => void,
+): () => void {
+  return onIdTokenChanged(getCustomerAuth(), (firebaseUser) => {
+    callback(firebaseUser ? toAuthUser(firebaseUser) : null);
   });
-
-  return () => {
-    cancelled = true;
-    unsubscribe();
-  };
 }
