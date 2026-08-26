@@ -8,11 +8,11 @@ interface RulesetResponse {
 }
 
 /**
- * Publishes the bundled customer-project firestore.rules (see
- * scripts/sync-templates.js) as the active ruleset in the customer's new
- * Firebase project via the Firebase Rules API, then releases it to
- * cloud.firestore — equivalent to `firebase deploy --only firestore:rules`
- * but callable programmatically with the customer's OAuth token.
+ * Публикует вложенный шаблон customer-project firestore.rules (см.
+ * scripts/sync-templates.js) как активный ruleset в новом Firebase-проекте
+ * покупателя через Firebase Rules API, затем релизит его в cloud.firestore —
+ * эквивалент `firebase deploy --only firestore:rules`, но вызываемый
+ * программно с OAuth-токеном покупателя.
  */
 export async function deployFirestoreRules(accessToken: string, projectId: string): Promise<void> {
   const rulesContent = readFileSync(join(__dirname, 'templates', 'firestore.rules'), 'utf-8');
@@ -57,8 +57,8 @@ interface TemplateIndex {
   fields: TemplateIndexField[];
 }
 
-/** Stable comparable signature of an index definition (field order matters
- *  for Firestore composite indexes, so it is part of the key). */
+/** Стабильная сравнимая сигнатура определения индекса (порядок полей важен
+ *  для составных индексов Firestore, поэтому входит в ключ). */
 function indexSignature(index: { queryScope?: string; fields?: TemplateIndexField[] }): string {
   const fields = (index.fields ?? []).map(
     (field) => `${field.fieldPath}:${field.order ?? ''}:${field.arrayConfig ?? ''}`,
@@ -67,10 +67,11 @@ function indexSignature(index: { queryScope?: string; fields?: TemplateIndexFiel
 }
 
 /**
- * Creates the composite indexes from the bundled firestore.indexes.json.
- * Firestore Admin API takes one index at a time. Idempotent on re-run:
- * existing indexes (from a previous partial run) are listed first and
- * skipped instead of failing the whole provisioning with ALREADY_EXISTS.
+ * Создаёт составные индексы из вложенного firestore.indexes.json.
+ * Firestore Admin API принимает по одному индексу за раз. Идемпотентно при
+ * повторном запуске: существующие индексы (от предыдущего частичного
+ * запуска) сначала перечисляются и пропускаются, вместо того чтобы валить
+ * весь провижининг ошибкой ALREADY_EXISTS.
  */
 export async function deployFirestoreIndexes(accessToken: string, projectId: string): Promise<void> {
   const indexesContent = readFileSync(
@@ -101,7 +102,7 @@ export async function deployFirestoreIndexes(accessToken: string, projectId: str
         body: JSON.stringify({ queryScope: index.queryScope, fields: index.fields }),
       });
     } catch (error) {
-      // 409: a concurrent/earlier run created this very index just now.
+      // 409: конкурентный/более ранний запуск только что создал этот самый индекс.
       if (!isGoogleApiStatus(error, 409)) throw error;
     }
   }

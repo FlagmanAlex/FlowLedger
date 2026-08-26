@@ -1,14 +1,14 @@
 /**
- * Mobile bootstrap for the CONTROL-PLANE Firebase project (the vendor's
- * own project used only for sign-in + provisioning — see
- * shared/src/firebase/controlPlane.ts). Imported once, for its side
- * effect, from App.tsx before navigation mounts.
+ * Бутстрап CONTROL-PLANE Firebase-проекта для мобильного клиента (вендорский
+ * проект, использующийся только для входа и провижининга — см.
+ * shared/src/firebase/controlPlane.ts). Импортируется один раз ради
+ * побочного эффекта из App.tsx до монтирования навигации.
  *
- * Config comes from app.json → expo.extra.controlPlaneFirebase* (fill
- * these in locally or via EAS secrets; see README's EAS section). The
- * customer's OWN Firebase project is NOT initialized here — that happens
- * dynamically via initCustomerFirebase() once a firebaseConfig is known
- * (ConnectScreen / future native provisioning flow).
+ * Конфиг берётся из app.json → expo.extra.controlPlaneFirebase* (заполнить
+ * локально или через секреты EAS; см. раздел EAS в README). СОБСТВЕННЫЙ
+ * Firebase-проект покупателя здесь НЕ инициализируется — это происходит
+ * динамически через initCustomerFirebase(), когда известен firebaseConfig
+ * (ConnectScreen / будущий нативный флоу провижининга).
  */
 import Constants from 'expo-constants';
 import { initControlPlaneFirebase } from '@flowledger/shared';

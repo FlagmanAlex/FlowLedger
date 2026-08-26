@@ -19,14 +19,14 @@ export type ProvisioningStep =
   | 'rulesDeployed'
   | 'indexesDeployed';
 
-/** Durable per-step checkpoints of the provisioning pipeline
- *  (control-plane createCustomerProject). A step marked true is already
- *  reflected in the real state of the customer's Google/Firebase project,
- *  so a resumed run skips straight past it. */
+/** Долговременные почаговые чекпоинты конвейера провижининга
+ *  (control-plane createCustomerProject). Шаг, помеченный true, уже отражён
+ *  в реальном состоянии Google/Firebase-проекта покупателя, поэтому
+ *  возобновлённый запуск перепрыгивает его сразу. */
 export type ProvisioningSteps = Partial<Record<ProvisioningStep, boolean>>;
 
-/** control-plane's `customers/{uid}` record — tracks the customer's own
- *  Firebase project (created for them via createCustomerProject). */
+/** Запись `customers/{uid}` контрольной плоскости — хранит информацию о собственном
+ *  Firebase-проекте покупателя (создаётся для него через createCustomerProject). */
 export interface CustomerRecord {
   status: ProvisioningStatus;
   projectId?: string;
@@ -34,8 +34,9 @@ export interface CustomerRecord {
   error?: string;
   createdAt?: string;
   readyAt?: string;
-  /** Heartbeat of the last pipeline write; also used to detect concurrent
-   *  runs and to notice a dead run (stale heartbeat → resume allowed). */
+  /** Heartbeat последней записи конвейера; также служит для обнаружения
+   *  параллельных запусков и «мертвого» запуска (протухший heartbeat →
+   *  разрешено возобновление). */
   updatedAt?: string;
   steps?: ProvisioningSteps;
 }

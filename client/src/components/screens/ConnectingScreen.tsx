@@ -15,10 +15,11 @@ import {
 } from '@flowledger/shared';
 
 /**
- * Runs once right after control-plane sign-in. Ensures the signed-in
- * customer has their own Firebase project (provisioning it the first time
- * via createCustomerProject — see control-plane/functions), then connects
- * the app to that project and signs the same Google account in there too.
+ * Запускается один раз сразу после входа в контрольную плоскость.
+ * Убеждается, что у вошедшего покупателя есть собственный Firebase-проект
+ * (при первом входе провижинится через createCustomerProject — см.
+ * control-plane/functions), затем подключает приложение к этому проекту и
+ * подписывает в него тот же Google-аккаунт.
  */
 export function ConnectingScreen() {
   const navigate = useNavigate();
@@ -26,9 +27,9 @@ export function ConnectingScreen() {
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
 
-  /** Calls the provisioning function. Safe to repeat (also manually, via
-   *  the Retry button): the backend is idempotent per step and resumes
-   *  from the last completed checkpoint instead of starting over. */
+  /** Вызывает функцию провижининга. Безопасно повторять (в том числе вручную,
+   *  кнопкой «Повторить»): бэкенд идемпотентен по шагам и продолжает работу
+   *  с последнего завершённого чекпоинта, а не начинает заново. */
   const startProvisioning = useCallback(async () => {
     try {
       const accessToken = await requestCloudPlatformAccessToken();
@@ -95,7 +96,7 @@ export function ConnectingScreen() {
     };
   }, [navigate, startProvisioning]);
 
-  /** Manual re-run after a visible failure: backend resumes mid-pipeline. */
+  /** Ручной перезапуск после показанной ошибки: бэкенд продолжает с середины конвейера. */
   const retryProvisioning = async () => {
     setRetrying(true);
     setError(null);

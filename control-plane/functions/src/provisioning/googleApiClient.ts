@@ -1,13 +1,15 @@
 /**
- * Thin wrapper over the Google Cloud / Firebase REST APIs. Adds:
- * - typed GoogleApiError carrying the HTTP status (see ./retry.js), which
- *   enables verify-then-act idempotency in googleCloudClient.ts;
- * - automatic retries of transient failures (rate limits, transient 5xx,
- *   network errors) with exponential backoff + jitter.
+ * Тонкая обёртка над REST API Google Cloud / Firebase. Добавляет:
+ * - типизированную ошибку GoogleApiError с HTTP-статусом (см. ./retry.js),
+ *   на которой строится идемпотентность «проверь, затем сделай» в
+ *   googleCloudClient.ts;
+ * - автоматические ретраи транзиентных сбоев (лимиты запросов, временные
+ *   5xx, сетевые ошибки) с экспоненциальной задержкой и джиттером.
  *
- * Retrying individual HTTP calls here is safe because every provisioning
- * action is built as a verify-then-act step: a repeated call first probes
- * the real remote state and only mutates what is genuinely missing.
+ * Повтор отдельных HTTP-вызовов здесь безопасен, потому что каждое действие
+ * провижининга построено как шаг «проверь, затем сделай»: повторный вызов
+ * сначала проверяет фактическое состояние на удалённой стороне и мутирует
+ * только действительно недостающее.
  */
 import { GoogleApiError, NetworkError, withRetry } from './retry.js';
 

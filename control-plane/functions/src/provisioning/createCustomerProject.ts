@@ -12,14 +12,14 @@ import {
 import { deployFirestoreIndexes, deployFirestoreRules } from './deployRules.js';
 
 interface CreateCustomerProjectPayload {
-  /** OAuth access token with cloud-platform + firebase scopes, obtained
-   *  client-side via a second, incremental Google consent. */
+  /** OAuth access token со scope cloud-platform + firebase, полученный
+   *  на клиенте вторым, инкрементальным Google-согласием. */
   accessToken: string;
   firestoreLocationId?: string;
 }
 
-/** Mirrors @flowledger/interfaces ProvisioningSteps — the functions package
- *  deliberately has no dependency on the interfaces workspace. */
+/** Зеркалит @flowledger/interfaces ProvisioningSteps — пакет functions
+ *  сознательно не зависит от workspace interfaces. */
 type ProvisioningSteps = Partial<
   Record<
     | 'projectCreated'
@@ -46,31 +46,34 @@ interface CustomerRecordSnapshot {
 }
 
 function customerProjectId(uid: string): string {
-  // Cloud project IDs: 6-30 chars, lowercase letters/digits/hyphens.
+  // Идентификаторы облачных проектов: 6-30 символов, строчные буквы/цифры/дефисы.
   return `flowledger-${uid.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16)}`;
 }
 
-/** A 'provisioning' record whose heartbeat (updatedAt) is younger than this
- *  means another invocation is probably still executing — a duplicate call
- *  must NOT start a second pipeline over it. Stale heartbeat → the previous
- *  run died mid-way and this call resumes from the recorded checkpoints. */
+/** Запись 'provisioning', чей heartbeat (updatedAt) свежее этого значения,
+ *  означает, что другой вызов, скорее всего, ещё исполняется — дублирующий
+ *  вызов НЕ должен запускать второй пайплайн поверх него. Протухший
+ *  heartbeat → прошлый запуск умер на середине, и этот вызов продолжит
+ *  работу по записанным чекпоинтам. */
 const PROVISIONING_HEARTBEAT_TTL_MS = 10 * 60 * 1000;
 
 /**
- * Orchestrates creating a brand-new, customer-owned Firebase project and
- * wiring it up to be ready for the FlowLedger app: Firestore Native
- * database, a registered Web App (for its SDK config), Google Sign-In
- * enabled, and the product's Security Rules/indexes deployed. Everything
- * runs against the CALLER's Google Cloud quota/billing, using their own
- * OAuth token — this function itself only reads/writes the control-plane's
- * `customers/{uid}` status document via the Admin SDK.
+ * Оркестрация создания нового Firebase-проекта, которым владеет покупатель,
+ * и его подготовки к работе FlowLedger: база Firestore Native,
+ * зарегистрированное Web-приложение (ради его SDK-конфига), включённый
+ * Google Sign-In и задеплоенные Security Rules/индексы продукта. Всё
+ * исполняется против квот/биллинга ВЫЗЫВАЮЩЕГО через его собственный
+ * OAuth-токен — сама функция лишь читает/пишет документ статуса
+ * `customers/{uid}` контрольной плоскости через Admin SDK.
  *
- * Fully re-runnable after a partial failure:
- * - every remote step is verify-then-act idempotent (googleCloudClient.ts);
- * - each completed step is checkpointed into `customers/{uid}.steps`, so a
- *   retry skips straight past what already landed remotely;
- * - a fresh 'provisioning' heartbeat makes concurrent duplicate calls wait
- *   instead of double-provisioning; a stale one lets the next call resume.
+ * Полностью перезапускаем после частичного сбоя:
+ * - каждый удалённый шаг идемпотентен по схеме «проверь, затем сделай»
+ *   (см. googleCloudClient.ts);
+ * - каждый завершённый шаг чекпоинтится в `customers/{uid}.steps`, поэтому
+ *   ретрай сразу перепрыгивает уже применённое на удалённой стороне;
+ * - свежий heartbeat в статусе 'provisioning' заставляет параллельные
+ *   дубли вызова ждать вместо двойного провижининга; протухший — разрешает
+ *   следующему вызову возобновить работу.
  */
 export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
   { timeoutSeconds: 540 },
@@ -87,7 +90,7 @@ export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
     const customerRef = db.collection('customers').doc(uid);
     const existing = (await customerRef.get()).data() as CustomerRecordSnapshot | undefined;
 
-    // Fully provisioned earlier — hand back the stored config untouched.
+    // Полностью провижинено ранее — возвращаем сохранённый конфиг без изменений.
     if (existing?.status === 'ready') {
       return existing;
     }
@@ -97,11 +100,11 @@ export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
       const heartbeatFresh =
         Number.isFinite(updatedAtMs) && Date.now() - updatedAtMs < PROVISIONING_HEARTBEAT_TTL_MS;
       if (heartbeatFresh) {
-        // Concurrent duplicate call: report current state; the UI follows
-        // progress through its own onSnapshot listener on customers/{uid}.
+        // Параллельный дублирующий вызов: сообщаем текущее состояние; UI
+        // следит за прогрессом через свой onSnapshot-слушатель customers/{uid}.
         return existing;
       }
-      // Stale heartbeat — previous run died mid-way; fall through and resume.
+      // Протухший heartbeat — прошлый запуск умер на середине; продолжаем ниже.
     }
 
     const projectId = customerProjectId(uid);
@@ -119,8 +122,8 @@ export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
       { merge: true },
     );
 
-    /** Durable checkpoint for one pipeline step, plus any extra record
-     *  fields that step produced (e.g. firebaseConfig). */
+    /** Долговременный чекпоинт одного шага конвейера плюс любые
+     *  дополнительные поля записи, созданные этим шагом (например, firebaseConfig). */
     const completeStep = async (
       step: keyof ProvisioningSteps,
       extra: Record<string, unknown> = {},
@@ -150,8 +153,8 @@ export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
         await completeStep('firestoreCreated');
       }
 
-      // Persist firebaseConfig AS SOON AS the web app exists — later steps
-      // may still fail, but the config must never be lost or re-created.
+      // Сохраняем firebaseConfig СРАЗУ после появления web app — поздние шаги
+      // могут упасть, но конфиг не должен ни потеряться, ни создаться заново.
       let webAppConfig = existing?.firebaseConfig;
       if (!steps.webAppCreated || !webAppConfig) {
         webAppConfig = await ensureWebApp(accessToken, projectId, 'FlowLedger Web');
@@ -162,8 +165,8 @@ export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
         await ensureGoogleSignInEnabled(accessToken, projectId);
         await completeStep('signInEnabled');
       }
-      // Rules deploy is naturally idempotent (release → newest ruleset), but
-      // skipping it when checkpointed avoids pointless API churn on resume.
+      // Деплой Rules естественно идемпотентен (release → новейший ruleset),
+      // но при проставленном чекпоинте пропуск избавляет от лишних вызовов API.
       if (!steps.rulesDeployed) {
         await deployFirestoreRules(accessToken, projectId);
         await completeStep('rulesDeployed');

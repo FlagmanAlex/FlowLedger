@@ -1,18 +1,19 @@
 /**
- * Idempotent ("verify-then-act") wrappers over the Google Cloud / Firebase
- * REST APIs used to provision a brand-new, customer-owned Firebase project.
+ * Идемпотентные обёртки («сначала проверь, потом делай») над REST API
+ * Google Cloud / Firebase для провижининга нового Firebase-проекта,
+ * которым владеет покупатель.
  *
- * Every step FIRST probes the live state of the resource and only performs
- * the mutation when it is genuinely missing; a mutation racing with an
- * earlier run ("already exists" / 409) is treated as success. Combined with
- * the automatic transient-error retry in googleApiClient.ts this makes the
- * whole pipeline safely re-runnable after a partial failure mid-way (the
- * previous best-effort version crashed on "already exists" errors and even
- * created duplicate web apps on retry).
+ * Каждый шаг СПЕРВА проверяет фактическое состояние ресурса и выполняет
+ * мутацию, только если её действительно не хватает; гонка мутации с более
+ * ранним запуском («already exists» / 409) считается успехом. В связке с
+ * автоматическим ретраем транзиентных ошибок в googleApiClient.ts это
+ * делает весь конвейер безопасно перезапускаемым после частичного сбоя на
+ * середине (прежняя best-effort версия падала на ошибках «already exists»
+ * и даже плодила дубликаты web app при ретрае).
  *
- * Every call is made with the CUSTOMER's own OAuth access token (elevated
- * scopes: cloud-platform + firebase) — the resulting project is theirs, on
- * their billing, not ours.
+ * Каждый вызов выполняется с СОБСТВЕННЫМ OAuth access token покупателя
+ * (elevated scopes: cloud-platform + firebase) — создаваемый проект
+ * принадлежит ему и идёт по его биллингу, а не нашему.
  */
 import { callGoogleApi } from './googleApiClient.js';
 import { isGoogleApiStatus } from './retry.js';
@@ -46,8 +47,8 @@ async function pollOperation(accessToken: string, operationUrl: string): Promise
   throw new Error(`Timed out waiting for operation ${operationUrl}`);
 }
 
-/** Creates the GCP project unless it already exists (e.g. from an earlier
- *  partially-failed run whose record never reached Firestore). */
+/** Создаёт GCP-проект, если он ещё не существует (например, после более
+ *  раннего частично упавшего запуска, чья запись так и не попала в Firestore). */
 export async function ensureGoogleCloudProject(
   accessToken: string,
   projectId: string,
@@ -57,7 +58,7 @@ export async function ensureGoogleCloudProject(
 
   try {
     await callGoogleApi(accessToken, getUrl);
-    return; // Already exists (and is visible) — nothing to do.
+    return; // Уже существует (и виден) — делать нечего.
   } catch (error) {
     if (!isGoogleApiStatus(error, 404)) throw error;
   }
@@ -70,17 +71,17 @@ export async function ensureGoogleCloudProject(
     );
     await pollOperation(accessToken, `https://cloudresourcemanager.googleapis.com/v3/${op.name}`);
   } catch (error) {
-    // 409: a concurrent/earlier run created it between our probe and this
-    // create. Confirm it is really visible now, otherwise surface the error.
+    // 409: конкурентный/более ранний запуск создал проект между нашей пробой
+    // и этим create. Подтверждаем, что он реально виден, иначе пробрасываем ошибку.
     if (!isGoogleApiStatus(error, 409)) throw error;
     await callGoogleApi(accessToken, getUrl);
   }
 }
 
-/** Enables required Google services. batchEnable is idempotent by itself;
- *  unlike the old version we now WAIT for its long-running operation so
- *  subsequent steps don't hit "API not enabled". An already-enabled set
- *  answers with an empty operation — nothing to wait for then. */
+/** Включает нужные сервисы Google. batchEnable сам по себе идемпотентен;
+ *  но, в отличие от старой версии, мы теперь ЖДЁМ завершения его long-running
+ *  операции, чтобы последующие шаги не ловили «API not enabled». Если всё уже
+ *  включено, API отвечает пустой операцией — ждать нечего. */
 export async function ensureServicesEnabled(accessToken: string, projectId: string): Promise<void> {
   const services = [
     'firestore.googleapis.com',
@@ -95,7 +96,7 @@ export async function ensureServicesEnabled(accessToken: string, projectId: stri
   if (op.name) await pollOperation(accessToken, `https://serviceusage.googleapis.com/v1/${op.name}`);
 }
 
-/** Adds Firebase to the GCP project unless it already IS a Firebase project. */
+/** Добавляет Firebase к GCP-проекту, если тот ещё не является Firebase-проектом. */
 export async function ensureFirebaseAdded(accessToken: string, projectId: string): Promise<void> {
   const getUrl = `https://firebase.googleapis.com/v1beta1/projects/${projectId}`;
 
@@ -114,13 +115,13 @@ export async function ensureFirebaseAdded(accessToken: string, projectId: string
     );
     await pollOperation(accessToken, `https://firebase.googleapis.com/v1beta1/${op.name}`);
   } catch (error) {
-    // 409: addFirebase raced with an earlier run that had actually landed.
+    // 409: addFirebase состязался с более ранним запуском, который уже применился.
     if (!isGoogleApiStatus(error, 409)) throw error;
     await callGoogleApi(accessToken, getUrl);
   }
 }
 
-/** Creates the native Firestore `(default)` database unless it exists. */
+/** Создаёт нативную базу Firestore `(default)`, если её ещё нет. */
 export async function ensureFirestoreDatabase(
   accessToken: string,
   projectId: string,
@@ -143,7 +144,7 @@ export async function ensureFirestoreDatabase(
     );
     if (op.name) await pollOperation(accessToken, `https://firestore.googleapis.com/v1/${op.name}`);
   } catch (error) {
-    // 409 ALREADY_EXISTS: an earlier run got here first.
+    // 409 ALREADY_EXISTS: сюда раньше добежал другой запуск.
     if (!isGoogleApiStatus(error, 409)) throw error;
   }
 }
@@ -153,9 +154,9 @@ interface WebAppSummary {
   displayName?: string;
 }
 
-/** Prefers OUR app by displayName but accepts any existing web app — after
- *  a partial failure there may already be exactly one lying around, and it
- *  must be reused rather than duplicated. */
+/** Предпочитает НАШЕ приложение по displayName, но берёт любое существующее
+ *  web-приложение — после частичного сбоя там уже может лежать ровно одно,
+ *  и его надо переиспользовать, а не дублировать. */
 async function findExistingWebApp(
   accessToken: string,
   projectId: string,
@@ -177,9 +178,10 @@ async function fetchWebAppConfig(accessToken: string, appName: string): Promise<
 }
 
 /**
- * Returns the SDK config of the FlowLedger web app, creating it ONLY if no
- * web app exists yet. The old createWebApp blindly created another app on
- * every retry; this version reuses whatever a previous partial run made.
+ * Возвращает SDK-конфиг FlowLedger web app, создавая его ТОЛЬКО если web-
+ * приложений ещё нет. Старый createWebApp слепо создавал новое приложение
+ * на каждом ретрае; эта версия переиспользует то, что успел создать
+ * предыдущий частичный запуск.
  */
 export async function ensureWebApp(
   accessToken: string,
@@ -197,7 +199,7 @@ export async function ensureWebApp(
     );
     await pollOperation(accessToken, `https://firebase.googleapis.com/v1beta1/${op.name}`);
   } catch (error) {
-    // 409: an earlier run created the app between our list and this create.
+    // 409: более ранний запуск создал приложение между нашим списком и этим create.
     if (!isGoogleApiStatus(error, 409)) throw error;
   }
 
@@ -206,8 +208,8 @@ export async function ensureWebApp(
   return fetchWebAppConfig(accessToken, app.name);
 }
 
-/** Enables Google Sign-In unless it is already enabled; the PATCH itself is
- *  idempotent, the GET just avoids a pointless write. */
+/** Включает Google Sign-In, если он ещё не включён; сам PATCH идемпотентен,
+ *  GET лишь избавляет от бессмысленной записи. */
 export async function ensureGoogleSignInEnabled(
   accessToken: string,
   projectId: string,
@@ -220,8 +222,8 @@ export async function ensureGoogleSignInEnabled(
     const config = await callGoogleApi<{ enabled?: boolean }>(accessToken, configUrl);
     if (config.enabled) return;
   } catch (error) {
-    // Not configured yet (404) or Identity Toolkit still settling right
-    // after being enabled — the PATCH below is the source of truth anyway.
+    // Ещё не сконфигурировано (404) либо Identity Toolkit ещё «устаканивается»
+    // сразу после включения — источником правды в любом случае является PATCH ниже.
     if (!isGoogleApiStatus(error, 404, 400, 403)) throw error;
   }
 

@@ -1,15 +1,15 @@
 /**
- * Shared primitives for resilient calls to the Google Cloud REST APIs used
- * by the provisioning pipeline (see ./googleCloudClient.ts):
+ * Общие примитивы для отказоустойчивых обращений к REST API Google Cloud,
+ * используемым конвейером провижининга (см. ./googleCloudClient.ts):
  *
- * - GoogleApiError — carries the HTTP status of a failed Google API call so
- *   callers can implement verify-then-act idempotency (e.g. treat 404 as
- *   "not created yet" and 409 as "already created").
- * - NetworkError — transport-level failure (DNS/socket/abort); always
- *   considered transient.
- * - withRetry — exponential backoff with jitter for transient failures
- *   (429 rate limits, transient 5xx, network errors). Non-transient errors
- *   are rethrown immediately.
+ * - GoogleApiError — несёт HTTP-статус неудачного вызова Google API, чтобы
+ *   вызывающий код мог строить идемпотентность «проверь, затем сделай»
+ *   (например, трактовать 404 как «ещё не создано», а 409 как «уже создано»).
+ * - NetworkError — сбой транспортного уровня (DNS/сокет/аборт); всегда
+ *   считается транзиентным.
+ * - withRetry — экспоненциальная задержка с джиттером вокруг транзиентных
+ *   сбоев (лимит 429, временные 5xx, сетевые ошибки). Нетранзиентные ошибки
+ *   пробрасываются сразу.
  */
 
 export class GoogleApiError extends Error {
@@ -22,7 +22,7 @@ export class GoogleApiError extends Error {
   }
 }
 
-/** Transport-level (fetch) failure — no HTTP status available. */
+/** Сбой транспортного уровня (fetch) — HTTP-статус недоступен. */
 export class NetworkError extends Error {
   constructor(message: string) {
     super(message);
@@ -37,15 +37,15 @@ export function isTransientError(error: unknown): boolean {
   return error instanceof NetworkError;
 }
 
-/** True when the error is a Google API response with one of `statuses`. */
+/** Истинна, когда ошибка — ответ Google API с одним из статусов `statuses`. */
 export function isGoogleApiStatus(error: unknown, ...statuses: number[]): boolean {
   return error instanceof GoogleApiError && statuses.includes(error.status);
 }
 
 export interface RetryOptions {
-  /** Total attempts including the first one. Default 4. */
+  /** Всего попыток, включая первую. По умолчанию 4. */
   attempts?: number;
-  /** Delay before the first retry; doubles on each attempt. Default 800ms. */
+  /** Задержка перед первым повтором; удваивается с каждой попыткой. По умолчанию 800 мс. */
   baseDelayMs?: number;
 }
 

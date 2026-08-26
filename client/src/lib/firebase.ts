@@ -1,12 +1,12 @@
 /**
- * Client bootstrap for the CONTROL-PLANE Firebase project (the vendor's
- * own project used only for sign-in + provisioning — see
- * shared/src/firebase/controlPlane.ts). Imported once, for its side
- * effect, from main.tsx before the router mounts.
+ * Бутстрап CONTROL-PLANE Firebase-проекта для веб-клиента (вендорский проект,
+ * использующийся только для входа и провижининга — см.
+ * shared/src/firebase/controlPlane.ts). Импортируется один раз ради
+ * побочного эффекта из main.tsx до монтирования роутера.
  *
- * The customer's OWN Firebase project is NOT initialized here — that
- * happens dynamically in ConnectingScreen/JoinScreen via
- * initCustomerFirebase() once a firebaseConfig is known.
+ * СОБСТВЕННЫЙ Firebase-проект покупателя здесь НЕ инициализируется — это
+ * происходит динамически в ConnectingScreen/JoinScreen через
+ * initCustomerFirebase(), когда становится известен firebaseConfig.
  */
 import { initControlPlaneFirebase } from '@flowledger/shared';
 
