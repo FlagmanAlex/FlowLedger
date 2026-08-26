@@ -12,6 +12,15 @@
 - [x] 3. `control-plane/functions/src/provisioning/createCustomerProject.ts` — оркестрация Google
       Cloud API (Resource Manager → Service Usage → Firebase Management → Firestore Admin →
       Identity Platform → Rules deploy), идемпотентный статус в Firestore [DONE]
+- [x] 13. **Idempotency/retry для `createCustomerProject`** — verify-then-act на каждом шаге
+      (`ensure*`-функции: GET-проба → мутация только недостающего, 404→create, 409→успех),
+      чекпоинты шагов в `customers/{uid}.steps`, heartbeat `updatedAt` против параллельных
+      запусков (TTL 10 мин), транзиентные ретраи (429/5xx/сеть) с backoff+jitter в
+      `googleApiClient.ts` (+ новый `retry.ts`), идемпотентный деплой индексов (list-before-create),
+      переиспользование web app вместо дублирования, кнопка «Повторить» в ConnectingScreen [DONE]
+- [x] 14. Починен битый bootstrap: `client/src/lib/firebase.ts` и `mobile/src/lib/firebase.ts`
+      не существовали (импортировались из main.tsx/App.tsx со времён пивота) — восстановлены
+      (инициализация control-plane из VITE_* / app.json extra) [DONE]
 - [x] 4. `interfaces/`: убран tenantId, добавлены Customer/ProvisioningStatus/ConnectedWorkspace/
       WorkspaceConfig/FirebaseWebAppConfig [DONE]
 - [x] 5. `shared/src/firebase/{controlPlane,customer}.ts` — раздельные именованные Firebase App
@@ -37,8 +46,7 @@
 
 ## Не реализовано / следующие шаги
 - [ ] Native Google Sign-In для mobile (см. выше)
-- [ ] Security Rules unit-тесты (`@firebase/rules-unit-testing`) на упрощённые customer-project rules
-- [ ] Idempotency/retry для `createCustomerProject` на частичный сбой между шагами
+- [ ] Security Rules unit-тесты (`@firebase/rules-unit-testing`)
 - [ ] Бюджеты по категориям
 - [ ] Регулярные операции (scheduled — но без Cloud Functions в проекте покупателя нужно решение)
 - [ ] Экспорт CSV/Excel

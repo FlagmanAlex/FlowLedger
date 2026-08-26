@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -24,6 +24,20 @@ export function ConnectingScreen() {
   const navigate = useNavigate();
   const [status, setStatus] = useState('Проверяем ваше пространство...');
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+
+  /** Calls the provisioning function. Safe to repeat (also manually, via
+   *  the Retry button): the backend is idempotent per step and resumes
+   *  from the last completed checkpoint instead of starting over. */
+  const startProvisioning = useCallback(async () => {
+    try {
+      const accessToken = await requestCloudPlatformAccessToken();
+      const createCustomerProject = httpsCallable(getControlPlaneFunctions(), 'createCustomerProject');
+      await createCustomerProject({ accessToken });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Provisioning failed');
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,17 +52,12 @@ export function ConnectingScreen() {
       const customerRef = doc(getControlPlaneFirestore(), 'customers', controlUser.uid);
 
       const unsubscribe = onSnapshot(customerRef, async (snap) => {
+        if (cancelled) return;
         const record = snap.data() as CustomerRecord | undefined;
 
         if (!record || !record.status) {
           setStatus('Создаём ваше персональное облако...');
-          try {
-            const accessToken = await requestCloudPlatformAccessToken();
-            const createCustomerProject = httpsCallable(getControlPlaneFunctions(), 'createCustomerProject');
-            await createCustomerProject({ accessToken });
-          } catch (err) {
-            if (!cancelled) setError(err instanceof Error ? err.message : 'Provisioning failed');
-          }
+          await startProvisioning();
           return;
         }
 
@@ -84,13 +93,28 @@ export function ConnectingScreen() {
       cancelled = true;
       unsubscribePromise.then((unsub) => unsub?.());
     };
-  }, [navigate]);
+  }, [navigate, startProvisioning]);
+
+  /** Manual re-run after a visible failure: backend resumes mid-pipeline. */
+  const retryProvisioning = async () => {
+    setRetrying(true);
+    setError(null);
+    await startProvisioning();
+    setRetrying(false);
+  };
 
   return (
     <div>
       <h1>FlowLedger</h1>
       <p>{status}</p>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <div role="alert">
+          <p>{error}</p>
+          <button type="button" onClick={retryProvisioning} disabled={retrying}>
+            {retrying ? 'Повторяем...' : 'Повторить'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

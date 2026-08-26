@@ -38,6 +38,17 @@ Web- и мобильный (React Native/Expo) клиенты.
   OAuth-токеном ПОКУПАТЕЛЯ — проект создаётся на его billing, не вендора.
 - **Идемпотентность**: `customers/{uid}.status === 'ready'` возвращается сразу без повторного
   провижининга.
+- **Провижининг устойчив к частичному сбою** (доработано после MVP): каждый шаг — verify-then-act
+  (`ensureGoogleCloudProject/ensureServicesEnabled/ensureFirebaseAdded/ensureFirestoreDatabase/
+  ensureWebApp/ensureGoogleSignInEnabled` в `googleCloudClient.ts`: GET-проба → мутация только
+  недостающего; 404→создать, 409→считать успехом). Завершённые шаги чекпоинтятся в
+  `customers/{uid}.steps` (`ProvisioningSteps` из interfaces), рестарт продолжается с последнего
+  шага. Heartbeat `updatedAt` (TTL 10 мин) не даёт параллельным вызовам задвоить пайплайн;
+  протухший heartbeat → следующий вызов возобновляет работу. Транзиентные ошибки (429/5xx/сеть)
+  ретраятся автоматически в `googleApiClient.ts` (экспоненциальный backoff+jitter, классы
+  `GoogleApiError`/`NetworkError` в `provisioning/retry.ts`). Web app переиспользуется по списку
+  (не дублируется), индексы деплоятся list-before-create, таймаут функции 540s. firebaseConfig
+  сохраняется в Firestore сразу после создания web app — не теряется при сбое поздних шагов.
 - **Приглашение участников — без control-plane**: владелец добавляет email в
   `workspace/config.pendingInviteEmails` (запись в СВОЕЙ Firestore), генерирует ссылку с
   закодированным `firebaseConfig` (не секрет), приглашённый открывает её → подключается напрямую к
@@ -71,10 +82,6 @@ Web- и мобильный (React Native/Expo) клиенты.
 - Дашборд-агрегаты считаются на клиенте из последних 500 транзакций.
 - Бюджеты, регулярные операции (`recurringTemplates` в модели заложены), экспорт CSV/Excel,
   push-уведомления, вложения к операциям — не реализованы.
-- `createCustomerProject` — best-effort MVP оркестрации; не покрыт retries на частичный сбой
-  (например, если `addFirebase` прошёл, а `createWebApp` упал) — при `status: 'failed'` повторный
-  вызов начнёт процесс заново, что может дать ошибку "project already exists" на шаге 1. Нужно
-  доработать на идемпотентность каждого шага перед продакшеном.
 
 ## Статус
 См. `tasks.md`.
