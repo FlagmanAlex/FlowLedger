@@ -30,19 +30,23 @@ export async function deployFirestoreRules(accessToken: string, projectId: strin
     },
   );
 
-  await callGoogleApi(
-    accessToken,
-    `https://firebaserules.googleapis.com/v1/projects/${projectId}/releases/cloud.firestore`,
-    {
+  const releaseName = `projects/${projectId}/releases/cloud.firestore`;
+
+  try {
+    // Обновляем существующий релиз (второй и последующие запуски).
+    await callGoogleApi(accessToken, `https://firebaserules.googleapis.com/v1/${releaseName}`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        release: {
-          name: `projects/${projectId}/releases/cloud.firestore`,
-          rulesetName: ruleset.name,
-        },
-      }),
-    },
-  );
+      body: JSON.stringify({ release: { name: releaseName, rulesetName: ruleset.name } }),
+    });
+  } catch (error) {
+    // 404: у свежего проекта релиза cloud.firestore ещё нет — PATCH обновить
+    // несуществующий ресурс не может, нужно создать его через POST.
+    if (!isGoogleApiStatus(error, 404)) throw error;
+    await callGoogleApi(accessToken, `https://firebaserules.googleapis.com/v1/projects/${projectId}/releases`, {
+      method: 'POST',
+      body: JSON.stringify({ name: releaseName, rulesetName: ruleset.name }),
+    });
+  }
 }
 
 interface TemplateIndexField {

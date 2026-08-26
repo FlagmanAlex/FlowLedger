@@ -23,12 +23,12 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "controlPlaneFirebaseApiKey": "",
-      "controlPlaneFirebaseAuthDomain": "",
-      "controlPlaneFirebaseProjectId": "",
-      "controlPlaneFirebaseStorageBucket": "",
-      "controlPlaneFirebaseMessagingSenderId": "",
-      "controlPlaneFirebaseAppId": ""
+      "controlPlaneFirebaseApiKey": "AIzaSyA4bdSfSvj_454P5w1o9pT08v-4t-MP5FY",
+      "controlPlaneFirebaseAuthDomain": "flowledger-control.firebaseapp.com",
+      "controlPlaneFirebaseProjectId": "flowledger-control",
+      "controlPlaneFirebaseStorageBucket": "flowledger-control.firebasestorage.app",
+      "controlPlaneFirebaseMessagingSenderId": "677714641727",
+      "controlPlaneFirebaseAppId": "1:677714641727:web:7b6fce6725bbf30a8a098a"
     }
   }
 }

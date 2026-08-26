@@ -82,7 +82,9 @@ export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
       throw new HttpsError('unauthenticated', 'Sign in required.');
     }
     const uid = request.auth.uid;
-    const { accessToken, firestoreLocationId = 'us-central' } = request.data;
+    // nam5 — мультирегион США: стабильный допустимый locationId для баз
+    // покупателей (легаси-идентификатор 'us-central' API больше не принимает).
+    const { accessToken, firestoreLocationId = 'nam5' } = request.data;
     if (!accessToken) {
       throw new HttpsError('invalid-argument', 'Missing accessToken.');
     }
@@ -162,7 +164,7 @@ export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
       }
 
       if (!steps.signInEnabled) {
-        await ensureGoogleSignInEnabled(accessToken, projectId);
+        await ensureGoogleSignInEnabled(accessToken, projectId, webAppConfig!.apiKey);
         await completeStep('signInEnabled');
       }
       // Деплой Rules естественно идемпотентен (release → новейший ruleset),
@@ -192,7 +194,7 @@ export const createCustomerProject = onCall<CreateCustomerProjectPayload>(
         { status: 'failed', error: message, updatedAt: now() },
         { merge: true },
       );
-      throw new HttpsError('internal', 'Provisioning failed', { message });
+      throw new HttpsError('internal', message);
     }
   },
 );

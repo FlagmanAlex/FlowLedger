@@ -6,10 +6,13 @@ const fs = require('fs');
 const path = require('path');
 
 const src = path.join(__dirname, '..', '..', '..', 'templates', 'customer-project');
-const dest = path.join(__dirname, '..', 'lib', 'templates');
+// deployRules.ts (compiled to lib/provisioning/deployRules.js) reads these via
+// `join(__dirname, 'templates', ...)`, so the compiled destination must sit
+// next to it under lib/provisioning/, not directly under lib/.
+const dest = path.join(__dirname, '..', 'lib', 'provisioning', 'templates');
 
 fs.mkdirSync(dest, { recursive: true });
 for (const file of ['firestore.rules', 'firestore.indexes.json']) {
   fs.copyFileSync(path.join(src, file), path.join(dest, file));
 }
-console.log('Synced customer-project templates into control-plane/functions/lib/templates/');
+console.log('Synced customer-project templates into control-plane/functions/lib/provisioning/templates/');
