@@ -9,8 +9,24 @@ export interface FirebaseWebAppConfig {
 
 export type ProvisioningStatus = 'provisioning' | 'ready' | 'failed';
 
-/** control-plane's `customers/{uid}` record — tracks the customer's own
- *  Firebase project (created for them via createCustomerProject). */
+export type ProvisioningStep =
+  | 'projectCreated'
+  | 'servicesEnabled'
+  | 'firebaseAdded'
+  | 'firestoreCreated'
+  | 'webAppCreated'
+  | 'signInEnabled'
+  | 'rulesDeployed'
+  | 'indexesDeployed';
+
+/** Долговременные почаговые чекпоинты конвейера провижининга
+ *  (control-plane createCustomerProject). Шаг, помеченный true, уже отражён
+ *  в реальном состоянии Google/Firebase-проекта покупателя, поэтому
+ *  возобновлённый запуск перепрыгивает его сразу. */
+export type ProvisioningSteps = Partial<Record<ProvisioningStep, boolean>>;
+
+/** Запись `customers/{uid}` контрольной плоскости — хранит информацию о собственном
+ *  Firebase-проекте покупателя (создаётся для него через createCustomerProject). */
 export interface CustomerRecord {
   status: ProvisioningStatus;
   projectId?: string;
@@ -18,4 +34,9 @@ export interface CustomerRecord {
   error?: string;
   createdAt?: string;
   readyAt?: string;
+  /** Heartbeat последней записи конвейера; также служит для обнаружения
+   *  параллельных запусков и «мертвого» запуска (протухший heartbeat →
+   *  разрешено возобновление). */
+  updatedAt?: string;
+  steps?: ProvisioningSteps;
 }
