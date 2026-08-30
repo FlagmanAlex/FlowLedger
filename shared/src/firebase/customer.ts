@@ -14,10 +14,39 @@ import {
 import { getAuth, type Auth } from 'firebase/auth';
 
 const CUSTOMER_APP_NAME = 'customer';
+const CUSTOMER_CONFIG_STORAGE_KEY = 'flowledger:customerFirebaseConfig';
 
 let app: FirebaseApp | undefined;
 let firestore: Firestore | undefined;
 let auth: Auth | undefined;
+
+function connectCustomerFirebase(config: FirebaseOptions): {
+  app: FirebaseApp;
+  firestore: Firestore;
+  auth: Auth;
+} {
+  app = initializeApp(config, CUSTOMER_APP_NAME);
+  firestore = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  });
+  auth = getAuth(app);
+  return { app, firestore, auth };
+}
+
+// Best-effort restore on module load (web only — no such persistent, synchronous
+// storage on React Native) so a page reload on an already-connected device
+// reconnects to the same project instead of leaving getCustomerAuth()/
+// getCustomerFirestore() unusable until the user re-runs ConnectingScreen/JoinScreen.
+if (typeof window !== 'undefined' && window.localStorage) {
+  const raw = window.localStorage.getItem(CUSTOMER_CONFIG_STORAGE_KEY);
+  if (raw) {
+    try {
+      connectCustomerFirebase(JSON.parse(raw) as FirebaseOptions);
+    } catch {
+      window.localStorage.removeItem(CUSTOMER_CONFIG_STORAGE_KEY);
+    }
+  }
+}
 
 /**
  * Connects to a customer-owned Firebase project (their own bought/created
@@ -40,13 +69,22 @@ export async function initCustomerFirebase(config: FirebaseOptions): Promise<{
     await deleteApp(existing);
   }
 
-  app = initializeApp(config, CUSTOMER_APP_NAME);
-  firestore = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-  });
-  auth = getAuth(app);
+  const result = connectCustomerFirebase(config);
 
-  return { app, firestore, auth };
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(CUSTOMER_CONFIG_STORAGE_KEY, JSON.stringify(config));
+    }
+  } catch {
+    // localStorage unavailable (React Native, privacy mode, quota) — the
+    // connection just won't survive a reload; caller flows re-establish it.
+  }
+
+  return result;
+}
+
+export function isCustomerFirebaseConnected(): boolean {
+  return auth !== undefined;
 }
 
 export function getCustomerFirestore(): Firestore {

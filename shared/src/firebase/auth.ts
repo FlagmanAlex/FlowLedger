@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import type { AuthUser } from '@flowledger/interfaces';
 import { getControlPlaneAuth } from './controlPlane.js';
-import { getCustomerAuth } from './customer.js';
+import { getCustomerAuth, isCustomerFirebaseConnected } from './customer.js';
 
 function toAuthUser(user: FirebaseUser): AuthUser {
   return {
@@ -71,9 +71,20 @@ export function subscribeToControlPlaneAuthUser(
   return onIdTokenChanged(getControlPlaneAuth(), callback);
 }
 
+/**
+ * No-ops as "signed out" instead of throwing when no customer project is
+ * connected yet (e.g. a fresh visit that hasn't been through
+ * ConnectingScreen/JoinScreen) — callers like useAuth/AuthLayout rely on
+ * this to redirect to /login rather than crash the app shell.
+ */
 export function subscribeToCustomerAuthUser(
   callback: (user: AuthUser | null) => void,
 ): () => void {
+  if (!isCustomerFirebaseConnected()) {
+    callback(null);
+    return () => {};
+  }
+
   return onIdTokenChanged(getCustomerAuth(), (firebaseUser) => {
     callback(firebaseUser ? toAuthUser(firebaseUser) : null);
   });
