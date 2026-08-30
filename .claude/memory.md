@@ -89,4 +89,4 @@ Web- и мобильный (React Native/Expo) клиенты.
   push-уведомления, вложения к операциям — не реализованы.
 
 ## Статус
-См. `tasks.md`.
+См. `.claude/plans/tasks.md` (активные задачи) и `.claude/archive/tasks/` (закрытые).
