@@ -9,7 +9,6 @@ import { Wallets } from '@/components/screens/Wallets';
 import { Categories } from '@/components/screens/Categories';
 import { Reports } from '@/components/screens/Reports';
 import { Settings } from '@/components/screens/Settings';
-import { transactionsAction } from '@/routes/transactions.action';
 
 const queryClient = new QueryClient();
 
@@ -23,11 +22,7 @@ const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           { index: true, element: <Dashboard /> },
-          {
-            path: 'transactions',
-            element: <Transactions />,
-            action: transactionsAction,
-          },
+          { path: 'transactions', element: <Transactions /> },
           { path: 'wallets', element: <Wallets /> },
           { path: 'categories', element: <Categories /> },
           { path: 'reports', element: <Reports /> },

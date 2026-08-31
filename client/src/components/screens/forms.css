@@ -1,0 +1,36 @@
+.create-form {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.create-form .field {
+  flex: 1;
+}
+
+.create-form .neo-button {
+  flex-shrink: 0;
+}
+
+.wallet-row__balance {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.wallet-row__amount {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .create-form {
+    flex-direction: column;
+  }
+
+  .create-form .neo-button {
+    width: 100%;
+  }
+}

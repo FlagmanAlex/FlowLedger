@@ -1,48 +1,131 @@
-import { Form, useOutletContext, useSearchParams } from 'react-router-dom';
-import { useCategories, useTransactions, useWallets, type UseAuthResult } from '@flowledger/shared';
+import { useState } from 'react';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
+import {
+  useCategories,
+  useTransactions,
+  useWallets,
+  type UseAuthResult,
+} from '@flowledger/shared';
+import type { Transaction, TransactionType } from '@flowledger/interfaces';
+import { IconCircle } from '@/components/ui/IconCircle';
+import { AddTransactionModal } from '@/components/ui/AddTransactionModal';
+import { colorForId } from '@/lib/palette';
+import { formatAmount, formatDateHeader } from '@/lib/format';
+import './Transactions.css';
+
+type TxFilter = 'all' | 'income' | 'expense';
+
+function groupByDate(transactions: Transaction[]) {
+  const groups: { date: string; items: Transaction[] }[] = [];
+  for (const t of transactions) {
+    const last = groups.at(-1);
+    if (last && last.date === t.date) {
+      last.items.push(t);
+    } else {
+      groups.push({ date: t.date, items: [t] });
+    }
+  }
+  return groups;
+}
 
 export function Transactions() {
   const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
   const [searchParams] = useSearchParams();
   const categoryId = searchParams.get('categoryId') ?? undefined;
 
+  const [filter, setFilter] = useState<TxFilter>('all');
+  const [showAdd, setShowAdd] = useState(false);
+  const [addType, setAddType] = useState<TransactionType>('expense');
+
   const { data: wallets } = useWallets(user?.uid);
   const { data: categories } = useCategories(user?.uid);
   const { data: transactions, isLoading } = useTransactions(user?.uid, { categoryId });
 
+  const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
+  const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
+
+  const filtered = (transactions ?? []).filter((t) => filter === 'all' || t.type === filter);
+  const groups = groupByDate(filtered);
+
+  function openAdd(type: TransactionType) {
+    setAddType(type);
+    setShowAdd(true);
+  }
+
   return (
-    <div>
-      <h1>Журнал операций</h1>
+    <div className="page">
+      <h1 className="page__title">Журнал</h1>
 
-      <Form method="post">
-        <select name="walletId" required>
-          {wallets?.map((w) => (
-            <option key={w.id} value={w.id}>{w.name}</option>
-          ))}
-        </select>
-        <select name="categoryId" required>
-          {categories?.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <select name="type" required>
-          <option value="expense">Расход</option>
-          <option value="income">Доход</option>
-        </select>
-        <input type="number" step="0.01" name="amount" placeholder="Сумма" required />
-        <input type="date" name="date" required />
-        <input type="text" name="description" placeholder="Описание" />
-        <button type="submit">Добавить</button>
-      </Form>
+      <div className="segmented transactions-filter">
+        <button
+          type="button"
+          className={`segmented__item${filter === 'all' ? ' is-active' : ''}`}
+          onClick={() => setFilter('all')}
+        >
+          Все
+        </button>
+        <button
+          type="button"
+          className={`segmented__item${filter === 'income' ? ' is-active' : ''}`}
+          onClick={() => setFilter('income')}
+        >
+          Доходы
+        </button>
+        <button
+          type="button"
+          className={`segmented__item${filter === 'expense' ? ' is-active' : ''}`}
+          onClick={() => setFilter('expense')}
+        >
+          Расходы
+        </button>
+      </div>
 
-      {isLoading && <p>Загрузка...</p>}
-      <ul>
-        {transactions?.map((t) => (
-          <li key={t.id}>
-            {t.date} — {t.type === 'expense' ? '-' : '+'}{Math.abs(t.amount).toFixed(2)} — {t.description}
-          </li>
+      <section className="neo-card">
+        {isLoading && <p className="state-message">Загрузка...</p>}
+        {!isLoading && groups.length === 0 && <p className="state-message">Операций пока нет</p>}
+        {groups.map((group) => (
+          <div key={group.date}>
+            <div className="date-header">{formatDateHeader(group.date)}</div>
+            {group.items.map((t) => {
+              const category = t.categoryId ? categoryById.get(t.categoryId) : undefined;
+              const wallet = walletById.get(t.walletId);
+              return (
+                <div key={t.id} className="list-row">
+                  <IconCircle
+                    label={category?.name ?? '·'}
+                    color={category ? category.color ?? colorForId(category.id) : colorForId(t.walletId)}
+                    size={38}
+                  />
+                  <div className="list-row__main">
+                    <div className="list-row__title">
+                      {category?.name ?? t.description ?? 'Операция'}
+                    </div>
+                    <div className="list-row__subtitle">{wallet?.name ?? ''}</div>
+                  </div>
+                  <div className={t.type === 'expense' ? 'amount-negative' : 'amount-positive'}>
+                    {t.type === 'expense' ? '−' : '+'}
+                    {formatAmount(Math.abs(t.amount))} ₽
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ))}
-      </ul>
+      </section>
+
+      <button type="button" className="fab" onClick={() => openAdd('expense')} aria-label="Добавить операцию">
+        +
+      </button>
+
+      {showAdd && (
+        <AddTransactionModal
+          user={user}
+          wallets={(wallets ?? []).filter((w) => !w.archived)}
+          categories={categories ?? []}
+          defaultType={addType}
+          onClose={() => setShowAdd(false)}
+        />
+      )}
     </div>
   );
 }

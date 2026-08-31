@@ -1,0 +1,16 @@
+.reports-chart {
+  width: 100%;
+  height: 260px;
+}
+
+.reports-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .reports-columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}

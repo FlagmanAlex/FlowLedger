@@ -1,0 +1,72 @@
+.add-tx__amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+}
+
+.add-tx__amount-input {
+  width: 100%;
+  max-width: 220px;
+  border: none;
+  background: transparent;
+  outline: none;
+  text-align: right;
+  font-family: var(--font-sans);
+  font-size: var(--fs-44);
+  font-weight: var(--fw-heavy);
+  color: inherit;
+}
+
+.add-tx__amount-suffix {
+  font-size: var(--fs-22);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+}
+
+.add-tx__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.add-tx__chip-row {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.add-tx__category-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.add-tx__category-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--neo-raised-sm);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-11);
+  cursor: pointer;
+}
+
+.add-tx__category-cell span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.add-tx__category-cell.is-selected {
+  box-shadow: var(--neo-inset);
+  border-color: var(--accent);
+}
