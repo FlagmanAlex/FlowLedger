@@ -12,8 +12,8 @@ import {
 
 export function Wallets() {
   const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { data: wallets, isLoading } = useWallets(Boolean(user));
-  const createWallet = useCreateWallet();
+  const { data: wallets, isLoading } = useWallets(user?.uid);
+  const createWallet = useCreateWallet(user?.uid);
   const archiveWallet = useArchiveWallet();
 
   const { register, handleSubmit, reset, formState } = useForm<WalletFormValues>({

@@ -1,19 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Category } from '@flowledger/interfaces';
-import { createCategory, listCategories, updateCategory, deleteCategory } from '../repositories/categories.repo.js';
+import {
+  createCategory,
+  deleteCategory,
+  listCategories,
+  updateCategory,
+} from '../repositories/categories.repo.js';
 
-export function useCategories(enabled: boolean) {
+export function useCategories(userId: string | undefined) {
   return useQuery({
-    queryKey: ['categories'],
-    queryFn: listCategories,
-    enabled,
+    queryKey: ['categories', userId],
+    queryFn: () => listCategories(userId!),
+    enabled: Boolean(userId),
   });
 }
 
-export function useCreateCategory() {
+export function useCreateCategory(userId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Omit<Category, 'id' | 'createdAt'>) => createCategory(input),
+    mutationFn: (input: Omit<Category, 'id' | 'userId' | 'createdAt'>) =>
+      createCategory(userId!, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['categories'] }),
   });
 }

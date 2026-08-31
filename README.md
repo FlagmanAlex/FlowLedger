@@ -1,24 +1,23 @@
 # FlowLedger
 
-Приложение для учёта доходов и расходов (personal/family finance tracker) с веб- и мобильным
+Приложение для учёта доходов и расходов (personal finance tracker) с веб- и мобильным
 (React Native) клиентами.
 
-## Ключевая идея: BYO-Firebase
+## Ключевая идея: единый Firebase-проект + подписка
 
-FlowLedger продаётся как продукт, а не как SaaS с общей базой. **Каждый покупатель подключает
-собственный, изолированный Firebase-проект** — данные физически не пересекаются с другими
-клиентами, и покупатель сам владеет своими данными и биллингом (в норме бесплатный план Firebase
-Spark, без привязки карты).
+FlowLedger использует **один общий Firebase-проект** (Firestore + Firebase Auth), которым владеет
+вендор — изоляция данных между пользователями через поле `userId` и Security Rules, а не через
+отдельные проекты на покупателя. Монетизация — подписка (`users/{uid}.plan: 'free'|'premium'`),
+поле защищено в Security Rules от изменения самим клиентом.
 
 Как это устроено:
-- **`control-plane/`** — тонкий Firebase-проект, которым владеет вендор. Его единственная задача —
-  идентифицировать покупателя (Google Sign-In) и один раз запустить Cloud Function
-  `createCustomerProject`, которая от имени покупателя (его OAuth-токеном) создаёт ему отдельный
-  Firebase-проект через Google Cloud Management API. Никакие финансовые данные здесь не хранятся.
-- **Проект покупателя** — Firestore + Firebase Auth (Google Sign-In), без Cloud Functions (они
-  требуют платный план). Баланс кошельков считается на клиенте через атомарную Firestore-транзакцию.
-- **Приглашение участников** (например, супруга в общий бюджет) — без центрального сервера: владелец
-  генерирует ссылку с конфигом своего проекта, приглашённый переходит по ней и подключается напрямую.
+- **Firestore + Firebase Auth (Google Sign-In)** — без выделенного сервера; баланс кошельков
+  считается на клиенте через атомарную Firestore-транзакцию (Cloud Functions в проекте не
+  используются — Spark-план остаётся бесплатным).
+- **`firestore.rules`** (корень репозитория) — источник правды по доступу: каждый документ
+  принадлежит ровно одному `userId`, менять чужие документы нельзя.
+- **Офлайн-режим** — Firestore `persistentLocalCache`, работает и в браузере, и на мобильном
+  (React Native) через один и тот же Web SDK (`firebase`), без нативных модулей.
 
 Подробности архитектурных решений — в [`.claude/memory.md`](./.claude/memory.md), активные задачи —
 в [`.claude/plans/tasks.md`](./.claude/plans/tasks.md), история и планы реализации — в
@@ -34,26 +33,26 @@ FlowLedger/
 ├── shared/                 # общая логика для client и mobile: Firebase-инициализация,
 │                            # репозитории поверх Firestore, React Query хуки, Zod-валидация форм
 ├── interfaces/              # общие TypeScript-типы (@flowledger/interfaces)
-├── control-plane/           # вендорский Firebase-проект: провижининг клиентских проектов
-│   └── functions/            # Cloud Function createCustomerProject и Google Cloud API-клиент
-├── templates/customer-project/  # эталонные Firestore Security Rules и индексы,
-│                                  # которые заливаются в новый проект покупателя
+├── docs/
+│   └── FIREBASE_SETUP.md    # создание Firebase-проекта, OAuth-клиент для mobile, env vars
+├── firebase.json             # конфиг единого Firebase-проекта (эмуляторы)
+├── .firebaserc                # project ID (плейсхолдер — заменить на свой)
+├── firestore.rules           # Security Rules — источник правды по доступу
+├── firestore.indexes.json    # композитные индексы Firestore
 ├── CLAUDE.md                # точка входа для Claude Code: правила и навигация по .claude/
 └── .claude/                 # рабочий контекст: архитектура, задачи, планы (см. CLAUDE.md)
     ├── memory.md             # архитектурные заметки и принятые решения
     ├── plans/                # активные задачи и план-доки по открытым темам
-    └── archive/              # закрытые темы и выполненные задачи
+    └── archive/              # закрытые темы и выполненные задачи (включая историю BYO-Firebase)
 ```
 
 ## Стек
 
 - **Клиент**: React 19, Vite, TypeScript, react-router-dom (actions для форм), @tanstack/react-query,
   react-hook-form + Zod, Recharts
-- **Мобильный клиент**: Expo, React Native, @react-navigation
-- **Бэкенд**: Firebase (Firestore, Firebase Auth) — без выделенного сервера в проекте покупателя;
-  Cloud Functions используются только в `control-plane/` для провижининга
-- **Монорепозиторий**: npm workspaces (`client`, `mobile`, `shared`, `interfaces`,
-  `control-plane/functions`)
+- **Мобильный клиент**: Expo, React Native, @react-navigation, `expo-auth-session` (Google Sign-In)
+- **Бэкенд**: Firebase (Firestore, Firebase Auth) — без выделенного сервера и без Cloud Functions
+- **Монорепозиторий**: npm workspaces (`client`, `mobile`, `shared`, `interfaces`)
 
 ## Запуск в разработке
 
@@ -61,12 +60,11 @@ FlowLedger/
 npm run install:all      # установка зависимостей во всех workspace
 npm run dev               # клиент (5173) + Firebase-эмуляторы
 npm run dev:mobile        # мобильное приложение (Expo)
-npm run build:client                 # сборка веб-клиента
-npm run build:control-plane-functions # сборка Cloud Functions control-plane
+npm run build:client      # сборка веб-клиента
 ```
 
 Перед запуском клиента скопируйте `client/.env.example` в `client/.env` и укажите конфиг вашего
-control-plane Firebase-проекта.
+Firebase-проекта — подробная инструкция в [`docs/FIREBASE_SETUP.md`](./docs/FIREBASE_SETUP.md).
 
 ### Сборка Android APK для тестирования
 
@@ -83,13 +81,12 @@ npx eas-cli build -p android --profile preview
 
 По завершении сборки EAS даёт ссылку/QR-код на скачивание `.apk` — переносите на телефон и
 устанавливаете (разрешив установку из неизвестных источников). Для быстрой проверки UI без сборки
-APK можно также использовать Expo Go: `npx expo start` в `mobile/` и сканировать QR-код —
-но учтите, что Google Sign-In на мобильном ещё не реализован (см. «Статус» ниже), рабочий путь
-входа сейчас — `ConnectScreen` (вставка ссылки-приглашения из веб-версии).
+APK можно также использовать Expo Go: `npx expo start` в `mobile/` и сканировать QR-код.
 
 ## Статус
 
-MVP-архитектура реализована (см. `.claude/plans/tasks.md`). Не хватает: полноценного native
-Google Sign-In с расширенными правами для мобильного провижининга, верификации Google OAuth-скоупа
-`cloud-platform`, и сквозной проверки на реальном Firebase-аккаунте — подробности в
-`.claude/memory.md`.
+Единый Firebase-проект + Google Sign-In (web) реализованы и не тестировались на реальном Firebase
+проекте в этой сессии. Google Sign-In на mobile (`expo-auth-session`) написан, но не проверен на
+реальном устройстве — нужен `googleWebClientId` из Google Cloud Console. Подписка
+(Stripe/RevenueCat) не интегрирована — только поле-заготовка `users/{uid}.plan`. Подробности —
+в `.claude/plans/tasks.md` и `.claude/memory.md`.

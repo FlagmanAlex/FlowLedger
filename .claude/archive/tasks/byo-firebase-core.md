@@ -1,7 +1,11 @@
 # Архив: базовая реализация BYO-Firebase — закрыто
 
-Актуальный контекст архитектуры — `.claude/memory.md`. Открытые продолжения этой темы —
-`.claude/plans/tasks.md` (пункты 10-12) и `.claude/plans/02-byo-firebase.md`.
+> **BYO-Firebase позже реверчена обратно на единый Firebase-проект** — см.
+> `.claude/archive/tasks/single-project-pivot.md` и актуальную архитектуру в `.claude/memory.md`.
+> Всё ниже — историческая справка, код из пунктов 1-14 удалён.
+
+Открытые продолжения этой темы (провижининг, OAuth-верификация и т.п.) закрыты вместе с реверт-ом
+— см. `single-project-pivot.md`.
 
 ## Выполнено
 - [x] 1. `control-plane/` workspace: `firebase.json`, `firestore.rules` (только customers/{uid}),

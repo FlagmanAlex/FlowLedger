@@ -8,19 +8,19 @@ import {
   updateTransaction,
 } from '../repositories/transactions.repo.js';
 
-export function useTransactions(enabled: boolean, filters: TransactionFilters = {}) {
+export function useTransactions(userId: string | undefined, filters: TransactionFilters = {}) {
   return useQuery({
-    queryKey: ['transactions', filters],
-    queryFn: () => listTransactions(filters),
-    enabled,
+    queryKey: ['transactions', userId, filters],
+    queryFn: () => listTransactions(userId!, filters),
+    enabled: Boolean(userId),
   });
 }
 
-export function useCreateTransaction() {
+export function useCreateTransaction(userId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) =>
-      createTransaction(input),
+    mutationFn: (input: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) =>
+      createTransaction(userId!, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });

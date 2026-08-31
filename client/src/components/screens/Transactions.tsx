@@ -6,9 +6,9 @@ export function Transactions() {
   const [searchParams] = useSearchParams();
   const categoryId = searchParams.get('categoryId') ?? undefined;
 
-  const { data: wallets } = useWallets(Boolean(user));
-  const { data: categories } = useCategories(Boolean(user));
-  const { data: transactions, isLoading } = useTransactions(Boolean(user), { categoryId });
+  const { data: wallets } = useWallets(user?.uid);
+  const { data: categories } = useCategories(user?.uid);
+  const { data: transactions, isLoading } = useTransactions(user?.uid, { categoryId });
 
   return (
     <div>

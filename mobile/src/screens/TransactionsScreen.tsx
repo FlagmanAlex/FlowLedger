@@ -10,7 +10,7 @@ import { useAuthUser } from '../navigation/AuthContext';
  */
 export function TransactionsScreen() {
   const { user } = useAuthUser();
-  const { data: transactions, isLoading } = useTransactions(Boolean(user));
+  const { data: transactions, isLoading } = useTransactions(user?.uid);
 
   return (
     <View style={styles.container}>

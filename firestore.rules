@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// Единый Firebase-проект продукта — изоляция данных между пользователями
+// через поле userId (а не отдельные проекты, как было в BYO-Firebase).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // plan меняется только доверенным бэкендом (Stripe/RevenueCat webhook
+    // через Admin SDK, который правила Firestore не ограничивают) — клиент
+    // не может сам себе выставить premium.
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.plan == 'free';
+      allow update: if isOwner(userId) &&
+        request.resource.data.plan == resource.data.plan;
+    }
+
+    match /wallets/{walletId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) &&
+        request.resource.data.userId == resource.data.userId;
+    }
+
+    match /categories/{categoryId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) &&
+        request.resource.data.userId == resource.data.userId;
+    }
+
+    match /transactions/{transactionId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) &&
+        request.resource.data.userId == resource.data.userId;
+    }
+
+    match /recurringTemplates/{templateId} {
+      allow read, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) &&
+        request.resource.data.userId == resource.data.userId;
+    }
+  }
+}

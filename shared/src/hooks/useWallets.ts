@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Wallet } from '@flowledger/interfaces';
-import { createWallet, listWallets, updateWallet, archiveWallet } from '../repositories/wallets.repo.js';
+import { archiveWallet, createWallet, listWallets, updateWallet } from '../repositories/wallets.repo.js';
 
-export function useWallets(enabled: boolean) {
+export function useWallets(userId: string | undefined) {
   return useQuery({
-    queryKey: ['wallets'],
-    queryFn: listWallets,
-    enabled,
+    queryKey: ['wallets', userId],
+    queryFn: () => listWallets(userId!),
+    enabled: Boolean(userId),
   });
 }
 
-export function useCreateWallet() {
+export function useCreateWallet(userId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Omit<Wallet, 'id' | 'balance' | 'archived' | 'createdAt'>) =>
-      createWallet(input),
+    mutationFn: (input: Omit<Wallet, 'id' | 'userId' | 'balance' | 'archived' | 'createdAt'>) =>
+      createWallet(userId!, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wallets'] }),
   });
 }

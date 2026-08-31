@@ -3,7 +3,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { LoginScreen } from '../screens/LoginScreen';
-import { ConnectScreen } from '../screens/ConnectScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { TransactionsScreen } from '../screens/TransactionsScreen';
 import { useAuthUser } from './AuthContext';
@@ -37,10 +36,7 @@ export function RootNavigator() {
         {user ? (
           <Stack.Screen name="Main" component={MainTabs} />
         ) : (
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Connect" component={ConnectScreen} />
-          </>
+          <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
     </NavigationContainer>
