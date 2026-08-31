@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.flowledger.mobile"
     },
     "android": {
       "package": "com.flowledger.mobile",
@@ -23,13 +24,15 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "firebaseApiKey": "",
-      "firebaseAuthDomain": "",
-      "firebaseProjectId": "",
-      "firebaseStorageBucket": "",
-      "firebaseMessagingSenderId": "",
-      "firebaseAppId": "",
-      "googleWebClientId": ""
+      "firebaseApiKey": "AIzaSyBrsoE6xdUABy-g9IAMDxAtjifmE-OKXwU",
+      "firebaseAuthDomain": "flowledger2.firebaseapp.com",
+      "firebaseProjectId": "flowledger2",
+      "firebaseStorageBucket": "flowledger2.firebasestorage.app",
+      "firebaseMessagingSenderId": "493091413384",
+      "firebaseAppId": "1:493091413384:web:a2e2f0a54dcd8c5c116e3d",
+      "googleWebClientId": "493091413384-a49q0ufv83sf3gmmihbg27du1et7nedq.apps.googleusercontent.com",
+      "googleIosClientId": "",
+      "googleAndroidClientId": "493091413384-fbvosngror8s562emiv8ef562e4p1va1.apps.googleusercontent.com"
     }
   }
 }

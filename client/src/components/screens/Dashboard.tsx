@@ -4,7 +4,11 @@ import { useOutletContext } from 'react-router-dom';
 
 export function Dashboard() {
   const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { summary, isLoading } = useDashboard(user?.uid);
+  const { summary, isLoading, error } = useDashboard(user?.uid);
+
+  if (error) {
+    return <p role="alert">Не удалось загрузить дашборд: {error.message}</p>;
+  }
 
   if (isLoading || !summary) {
     return <p>Загрузка дашборда...</p>;
