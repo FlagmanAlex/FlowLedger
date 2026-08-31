@@ -11,20 +11,22 @@ import { listCategories } from '../repositories/categories.repo.js';
  * trip for the common case; a Cloud Function-backed aggregate can replace
  * this later if the transaction volume outgrows client-side aggregation.
  */
-export function useDashboard(enabled: boolean) {
+export function useDashboard(userId: string | undefined) {
+  const enabled = Boolean(userId);
+
   const walletsQuery = useQuery({
-    queryKey: ['wallets'],
-    queryFn: listWallets,
+    queryKey: ['wallets', userId],
+    queryFn: () => listWallets(userId!),
     enabled,
   });
   const categoriesQuery = useQuery({
-    queryKey: ['categories'],
-    queryFn: listCategories,
+    queryKey: ['categories', userId],
+    queryFn: () => listCategories(userId!),
     enabled,
   });
   const transactionsQuery = useQuery({
-    queryKey: ['transactions', { limit: 500 }],
-    queryFn: () => listTransactions({ limit: 500 }),
+    queryKey: ['transactions', userId, { limit: 500 }],
+    queryFn: () => listTransactions(userId!, { limit: 500 }),
     enabled,
   });
 

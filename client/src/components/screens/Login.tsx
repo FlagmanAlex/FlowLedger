@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInControlPlaneWithGoogle } from '@flowledger/shared';
+import { signInWithGooglePopup } from '@flowledger/shared';
 
 export function Login() {
   const navigate = useNavigate();
@@ -11,8 +11,8 @@ export function Login() {
     setError(null);
     setLoading(true);
     try {
-      await signInControlPlaneWithGoogle();
-      navigate('/connecting');
+      await signInWithGooglePopup();
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed');
     } finally {
@@ -28,9 +28,6 @@ export function Login() {
         {loading ? 'Вход...' : 'Войти через Google'}
       </button>
       {error && <p role="alert">{error}</p>}
-      <p>
-        Получили ссылку-приглашение? <a href="/join">Присоединиться к бюджету</a>
-      </p>
     </div>
   );
 }

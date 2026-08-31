@@ -28,16 +28,17 @@
 .claude/
 ├── memory.md                    — архитектура и решения (живой документ)
 ├── plans/                       — активный контекст
-│   ├── tasks.md                 — текущие открытые задачи
-│   └── 02-byo-firebase.md       — план BYO-Firebase пивота, ещё не полностью закрыт
-│                                   (см. tasks.md пункты 10-12)
+│   └── tasks.md                 — текущие открытые задачи
 └── archive/                     — закрытые темы, не грузить в контекст без необходимости
     ├── plans/
-    │   ├── 00-initial-setup.md  — первичный scaffold, выполнено и неактуально
-    │   └── 01-firebase-pivot.md — пивот на общий Firestore, выполнено и заменено BYO-Firebase
+    │   ├── 00-initial-setup.md      — первичный scaffold, выполнено и неактуально
+    │   ├── 01-firebase-pivot.md     — пивот на общий Firestore, заменён BYO-Firebase, затем
+    │   │                              реверчен обратно (см. single-project-pivot.md)
+    │   └── 02-byo-firebase.md       — план BYO-Firebase, реверчен на единый проект
     └── tasks/
-        ├── initial-scaffold.md     — закрытые задачи начального scaffold
-        └── byo-firebase-core.md    — закрытые задачи базовой реализации BYO-Firebase
+        ├── initial-scaffold.md      — закрытые задачи начального scaffold
+        ├── byo-firebase-core.md     — закрытые задачи базовой реализации BYO-Firebase (реверчено)
+        └── single-project-pivot.md  — реверт BYO-Firebase на единый проект (актуальная архитектура)
 ```
 
 (`mobile/.claude/settings.json` — отдельная область, конфиг плагина Expo для mobile-подпроекта,
@@ -46,11 +47,11 @@
 ## Контекст по workspace'ам
 
 У каждого npm workspace — свой короткий `CLAUDE.md` в его корне: `client/CLAUDE.md`,
-`mobile/CLAUDE.md`, `shared/CLAUDE.md`, `interfaces/CLAUDE.md`, `control-plane/CLAUDE.md`. Claude
-Code подхватывает его автоматически при работе внутри этой директории. Каждый такой файл — не
-дубликат `memory.md`/`tasks.md`, а указатель: роль workspace'а в двух-трёх предложениях + ссылка
-сюда и в `.claude/plans/tasks.md`, отфильтрованная по тегу этого workspace (`[client]`, `[mobile]`,
-`[shared]`, `[interfaces]`, `[control-plane]` — теги проставлены прямо в пунктах `tasks.md`).
+`mobile/CLAUDE.md`, `shared/CLAUDE.md`, `interfaces/CLAUDE.md`. Claude Code подхватывает его
+автоматически при работе внутри этой директории. Каждый такой файл — не дубликат
+`memory.md`/`tasks.md`, а указатель: роль workspace'а в двух-трёх предложениях + ссылка сюда и в
+`.claude/plans/tasks.md`, отфильтрованная по тегу этого workspace (`[client]`, `[mobile]`,
+`[shared]`, `[interfaces]` — теги проставлены прямо в пунктах `tasks.md`).
 
 При заведении нового workspace — заводи для него такой же `CLAUDE.md` по этому шаблону, а новые
 задачи в `tasks.md` сразу помечай тегом (можно несколькими, если фича сквозная).

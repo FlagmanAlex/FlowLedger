@@ -2,6 +2,7 @@ export type TransactionType = 'income' | 'expense' | 'transfer';
 
 export interface Transaction {
   id: string;
+  userId: string;
   walletId: string;
   categoryId?: string;
   transferToWalletId?: string;
@@ -18,6 +19,7 @@ export interface Transaction {
 
 export interface RecurringTemplate {
   id: string;
+  userId: string;
   walletId: string;
   categoryId?: string;
   type: TransactionType;

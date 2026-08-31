@@ -12,8 +12,8 @@ import {
 
 export function Categories() {
   const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { data: categories, isLoading } = useCategories(Boolean(user));
-  const createCategory = useCreateCategory();
+  const { data: categories, isLoading } = useCategories(user?.uid);
+  const createCategory = useCreateCategory(user?.uid);
   const deleteCategory = useDeleteCategory();
 
   const { register, handleSubmit, reset, formState } = useForm<CategoryFormValues>({

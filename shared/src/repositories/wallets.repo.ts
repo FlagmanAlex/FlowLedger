@@ -1,17 +1,19 @@
-import { addDoc, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { addDoc, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import type { Wallet } from '@flowledger/interfaces';
 import { walletsCollection } from './collections.js';
 
-export async function listWallets(): Promise<Wallet[]> {
-  const snap = await getDocs(walletsCollection());
+export async function listWallets(userId: string): Promise<Wallet[]> {
+  const snap = await getDocs(query(walletsCollection(), where('userId', '==', userId)));
   return snap.docs.map((d) => d.data());
 }
 
 export async function createWallet(
-  input: Omit<Wallet, 'id' | 'balance' | 'archived' | 'createdAt'>,
+  userId: string,
+  input: Omit<Wallet, 'id' | 'userId' | 'balance' | 'archived' | 'createdAt'>,
 ): Promise<string> {
   const ref = await addDoc(walletsCollection(), {
     ...input,
+    userId,
     balance: 0,
     archived: false,
     createdAt: new Date().toISOString(),

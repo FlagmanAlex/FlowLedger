@@ -9,7 +9,7 @@ import {
   where,
 } from 'firebase/firestore';
 import type { Transaction } from '@flowledger/interfaces';
-import { getCustomerFirestore } from '../firebase/customer.js';
+import { getFirestoreInstance } from '../firebase/firebase.js';
 import { transactionsCollection, walletsCollection } from './collections.js';
 
 export interface TransactionFilters {
@@ -19,8 +19,11 @@ export interface TransactionFilters {
   limit?: number;
 }
 
-export async function listTransactions(filters: TransactionFilters = {}): Promise<Transaction[]> {
-  const clauses = [];
+export async function listTransactions(
+  userId: string,
+  filters: TransactionFilters = {},
+): Promise<Transaction[]> {
+  const clauses = [where('userId', '==', userId)];
   if (filters.walletId) clauses.push(where('walletId', '==', filters.walletId));
   if (filters.categoryId) clauses.push(where('categoryId', '==', filters.categoryId));
   if (filters.type) clauses.push(where('type', '==', filters.type));
@@ -40,19 +43,19 @@ function signedAmount(type: Transaction['type'], amount: number): number {
 }
 
 /**
- * No Cloud Function backs wallet balances in a customer's own project
- * (Functions require the paid Blaze plan — see architecture notes), so the
- * client keeps `wallets.balance` denormalized itself via an atomic
- * Firestore transaction on every create/update/delete.
+ * Нет Cloud Function для баланса кошельков (Functions требуют платный
+ * Blaze-план), поэтому клиент денормализует wallets.balance сам через
+ * атомарную Firestore-транзакцию на create/update/delete.
  */
 export async function createTransaction(
-  input: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>,
+  userId: string,
+  input: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>,
 ): Promise<string> {
   const now = new Date().toISOString();
   const newDocRef = doc(transactionsCollection());
 
-  await runTransaction(getCustomerFirestore(), async (tx) => {
-    tx.set(newDocRef, { ...input, createdAt: now, updatedAt: now } as Transaction);
+  await runTransaction(getFirestoreInstance(), async (tx) => {
+    tx.set(newDocRef, { ...input, userId, createdAt: now, updatedAt: now } as Transaction);
     tx.update(doc(walletsCollection(), input.walletId), {
       balance: increment(signedAmount(input.type, input.amount)),
     });
@@ -64,7 +67,7 @@ export async function createTransaction(
 export async function updateTransaction(id: string, patch: Partial<Transaction>): Promise<void> {
   const ref = doc(transactionsCollection(), id);
 
-  await runTransaction(getCustomerFirestore(), async (tx) => {
+  await runTransaction(getFirestoreInstance(), async (tx) => {
     const before = await tx.get(ref);
     const beforeData = before.data();
     if (!beforeData) throw new Error(`Transaction ${id} not found`);
@@ -91,7 +94,7 @@ export async function updateTransaction(id: string, patch: Partial<Transaction>)
 export async function deleteTransaction(id: string): Promise<void> {
   const ref = doc(transactionsCollection(), id);
 
-  await runTransaction(getCustomerFirestore(), async (tx) => {
+  await runTransaction(getFirestoreInstance(), async (tx) => {
     const snap = await tx.get(ref);
     const data = snap.data();
     if (!data) return;

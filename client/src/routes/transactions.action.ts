@@ -1,13 +1,13 @@
 import type { ActionFunctionArgs } from 'react-router-dom';
-import { createTransaction, getCustomerAuth } from '@flowledger/shared';
+import { createTransaction, getFirebaseAuth } from '@flowledger/shared';
 import type { TransactionType } from '@flowledger/interfaces';
 
 export async function transactionsAction({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  const user = getCustomerAuth().currentUser;
+  const user = getFirebaseAuth().currentUser;
   if (!user) return null;
 
-  await createTransaction({
+  await createTransaction(user.uid, {
     walletId: String(formData.get('walletId')),
     categoryId: String(formData.get('categoryId')),
     type: String(formData.get('type')) as TransactionType,

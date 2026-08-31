@@ -1,3 +1,9 @@
+> **СТАТУС: АРХИТЕКТУРА РЕВЕРТНУТА.** BYO-Firebase (отдельный Firebase-проект на покупателя)
+> заменён обратно на единый Firebase-проект с изоляцией по `userId` — из-за риска платной
+> ежегодной OAuth security assessment ($15k-75k) для scope `cloud-platform` и потому что офлайн-режим
+> на mobile больше не требовал BYO-подхода. Актуальная архитектура — `.claude/memory.md`, детали
+> реверта — `.claude/archive/tasks/single-project-pivot.md`. Всё ниже — историческая справка.
+
 # План: продукт с BYO-Firebase на клиента
 
 Статус: базовая реализация выполнена и заархивирована — см. `.claude/archive/tasks/byo-firebase-core.md`.

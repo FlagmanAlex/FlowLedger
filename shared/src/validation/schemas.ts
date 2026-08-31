@@ -26,8 +26,3 @@ export const transactionFormSchema = z.object({
   date: z.string().min(1, 'Required'),
 });
 export type TransactionFormValues = z.infer<typeof transactionFormSchema>;
-
-export const inviteFormSchema = z.object({
-  email: z.string().email('Invalid email'),
-});
-export type InviteFormValues = z.infer<typeof inviteFormSchema>;

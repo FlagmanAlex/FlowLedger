@@ -1,8 +1,9 @@
 # interfaces — общие TypeScript-типы (@flowledger/interfaces)
 
-Единственный источник типов для `client`/`mobile`/`shared`/`control-plane` — без `tenantId` (см.
-`../.claude/memory.md`). Один файл — один домен (`transaction`, `wallet`, `category`, `workspace`,
-`customer`, `dashboard`, `user`, `common`), экспорт — через `src/index.ts`.
+Единственный источник типов для `client`/`mobile`/`shared` — изоляция между пользователями через
+поле `userId` на каждом типе, а не отдельный `tenantId`/проект (см. `../.claude/memory.md`). Один
+файл — один домен (`transaction`, `wallet`, `category`, `dashboard`, `user`, `common`), экспорт —
+через `src/index.ts`.
 
 Полный архитектурный контекст, принятые решения и стиль — в корневом [`../CLAUDE.md`](../CLAUDE.md)
 и [`../.claude/memory.md`](../.claude/memory.md). Не дублируй их здесь — читай оттуда.
