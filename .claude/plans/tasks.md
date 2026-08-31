@@ -31,9 +31,14 @@
       Приостановлено 2026-08-31 в пользу проверки Google-логина на `[client]` (веб) — там
       функционал нужен быстрее и `signInWithPopup` не имеет проблемы Expo Go (не завязан на
       Android/iOS OAuth-клиенты, только на `authDomain` того же Firebase-проекта).
-- [ ] 2. `[control-plane]`* Деплой `firestore.rules`/`firestore.indexes.json` в реальный
-      Firebase-проект — не выполнено ни в одной сессии (нет реального Google Cloud аккаунта).
-      *корневой уровень, отдельного workspace `control-plane/` больше нет
+      **`[client]` Google Sign-In на web проверен и работает на реальном проекте `flowledger2`
+      (2026-08-31)** — вход, создание `users/{uid}`, чтение дашборда (пустого, для нового
+      пользователя) подтверждены вручную. Попутно поправлен `useDashboard`/`Dashboard.tsx`: при
+      ошибке любого из трёх запросов экран раньше молча вис на «Загрузка дашборда...» вместо
+      показа ошибки — теперь `useDashboard` возвращает `error`, `Dashboard` его показывает.
+- [x] 2. Деплой `firestore.rules`/`firestore.indexes.json` в реальный Firebase-проект
+      (`flowledger2`) — выполнено 2026-08-31 (`.firebaserc` указывал на плейсхолдер `flowledger`,
+      исправлено на реальный project id перед деплоем).
 - [ ] 3. Security Rules unit-тесты (`@firebase/rules-unit-testing`) для `firestore.rules`
       (корень репозитория)
 - [ ] 4. `[shared, client]` Интеграция подписки (Stripe или RevenueCat) — поле `users/{uid}.plan`

@@ -83,5 +83,6 @@ export function useDashboard(userId: string | undefined) {
   return {
     summary,
     isLoading: walletsQuery.isLoading || categoriesQuery.isLoading || transactionsQuery.isLoading,
+    error: walletsQuery.error ?? categoriesQuery.error ?? transactionsQuery.error,
   };
 }
