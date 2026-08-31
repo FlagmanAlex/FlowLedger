@@ -1,20 +1,21 @@
-import type { WorkspaceRole } from './workspace.interface.js';
+export type UserPlan = 'free' | 'premium';
 
+/** Документ `users/{uid}` — единый Firebase-проект продукта, изоляция данных
+ *  между пользователями через это поле, а не через отдельные проекты. */
 export interface User {
   uid: string;
   email: string;
   displayName: string;
   photoURL?: string;
-  role: WorkspaceRole;
+  plan: UserPlan;
   createdAt: string;
 }
 
-/** The signed-in user within the currently active connected workspace
- *  (Firebase project) — uid/role are scoped to that project, not global. */
+/** Текущий вошедший пользователь (то же самое, что User, без createdAt —
+ *  берётся из Firebase Auth, а не из документа users/{uid}). */
 export interface AuthUser {
   uid: string;
   email: string;
   displayName: string;
   photoURL?: string;
-  role: WorkspaceRole;
 }

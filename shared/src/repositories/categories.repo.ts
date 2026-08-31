@@ -1,17 +1,19 @@
-import { addDoc, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { addDoc, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import type { Category } from '@flowledger/interfaces';
 import { categoriesCollection } from './collections.js';
 
-export async function listCategories(): Promise<Category[]> {
-  const snap = await getDocs(categoriesCollection());
+export async function listCategories(userId: string): Promise<Category[]> {
+  const snap = await getDocs(query(categoriesCollection(), where('userId', '==', userId)));
   return snap.docs.map((d) => d.data());
 }
 
 export async function createCategory(
-  input: Omit<Category, 'id' | 'createdAt'>,
+  userId: string,
+  input: Omit<Category, 'id' | 'userId' | 'createdAt'>,
 ): Promise<string> {
   const ref = await addDoc(categoriesCollection(), {
     ...input,
+    userId,
     createdAt: new Date().toISOString(),
   } as Category);
   return ref.id;
