@@ -46,6 +46,31 @@
       `plan` (Cloud Function с Admin SDK — правила Firestore это не ограничивают, но клиент сам
       `plan` изменить не может)
 
+## Дизайн из design_handoff_mobile_app — перенос на web
+План: `.claude/plans/web-design-system.md`. Дизайн-хендофф (`.claude/plans/design_handoff_mobile_app/`)
+изначально нацелен на mobile, по решению пользователя (2026-08-31) сначала переносится на web
+(`client/` уже работает функционально, но полностью неоформлен), mobile — позже.
+
+- [x] `[client]` Фундамент: `tokens.css`/`primitives.css`, переписать `index.css`, удалить мёртвый
+      Vite-скаффолд (`App.css`, неиспользуемые assets) — выполнено 2026-08-31
+- [x] `[client]` Login, MainLayout (сайдбар), Dashboard — 1:1 по спеке — выполнено 2026-08-31.
+      Login визуально сверен скриншотом (headless Chromium, реальный дев-сервер) — совпадает со
+      спекой. Dashboard/MainLayout не сверялись визуально с реальными данными (нет рабочего
+      Firebase-конфига в песочнице сессии, где выполнялась задача) — только сборка (`tsc -b`,
+      `vite build`) и код-ревью, живая проверка нужна отдельно.
+- [x] `[client]` Transactions/Журнал + модалка Add Transaction (адаптация bottom-sheet под web) —
+      выполнено 2026-08-31. Заодно: создание операции переведено с `Form`+router action
+      (`routes/transactions.action.ts`, удалён) на `useCreateTransaction` — action не инвалидировал
+      react-query кэш, список не обновился бы после добавления через новую модалку. Не сверено
+      визуально вживую (см. выше).
+- [x] `[client]` Wallets, Categories, Reports (recharts), Settings — экстраполяция токенов на
+      экраны вне спеки — выполнено 2026-08-31. Не сверено визуально вживую (см. выше).
+- [ ] `[client]` Визуально прогнать Dashboard/Journal/Add-модалку/Wallets/Categories/Reports/
+      Settings с реальным Firebase-логином (в песочнице сессии не было рабочего `.env`) — глазами
+      или скриншотами по каждому экрану, начиная с уже подтверждённого `flowledger2`
+- [ ] `[mobile]` Перенос того же дизайна в Expo/RN (тот же токен-набор через RN StyleSheet) — не
+      начато, ждёт завершения web-версии
+
 ## Не реализовано / следующие шаги
 - [ ] `[interfaces, shared, client, mobile]` Бюджеты по категориям — сперва тип в `interfaces`,
       затем repository/hook в `shared`, затем UI в `client`/`mobile`. Главная premium-фича.

@@ -7,7 +7,7 @@ export function AuthLayout() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <p>Загрузка...</p>;
+    return <p className="auth-loading">Загрузка...</p>;
   }
 
   if (!user) {

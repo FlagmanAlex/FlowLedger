@@ -1,0 +1,17 @@
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.profile-name {
+  font-size: var(--fs-16);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+}
+
+.profile-email {
+  margin-top: 2px;
+  font-size: var(--fs-13);
+  color: var(--text-secondary);
+}
