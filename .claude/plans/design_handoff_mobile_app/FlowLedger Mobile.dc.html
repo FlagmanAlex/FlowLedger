@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>::-webkit-scrollbar{display:none}*{scrollbar-width:none}</style></helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0E1018;padding:40px;box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif;">
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402,874">
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:0 32px;text-align:center;gap:16px;box-sizing:border-box;">
+  <div style="width:88px;height:88px;border-radius:26px;display:flex;align-items:center;justify-content:center;background:#1B2136;box-shadow:8px 8px 16px #12141C,-8px -8px 16px #242C49;">
+    <span style="font-size:30px;font-weight:800;color:#7B61FF;letter-spacing:-1px;">FL</span>
+  </div>
+  <div>
+    <div style="font-size:26px;font-weight:800;color:#F5F6FA;">FlowLedger</div>
+    <div style="font-size:14px;color:rgba(245,246,250,0.5);margin-top:6px;">Учёт доходов и расходов</div>
+  </div>
+  <div style="height:16px;"></div>
+  <div style="width:100%;height:56px;border-radius:18px;background:#1B2136;box-shadow:8px 8px 16px #12141C,-8px -8px 16px #242C49;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-sizing:border-box;" onClick="{{ login }}">
+    <div style="width:26px;height:26px;border-radius:50%;background:#F5F6FA;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#1B2136;">G</div>
+    <span style="font-size:15px;font-weight:700;color:#F5F6FA;">Войти через Google</span>
+  </div>
+  <span style="font-size:12px;color:rgba(245,246,250,0.35);margin-top:6px;">Один аккаунт Firebase — веб и мобильное приложение</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+<div style="height:100%;position:relative;display:flex;flex-direction:column;box-sizing:border-box;">
+  <div style="flex:1;overflow:auto;padding:64px 20px 110px;box-sizing:border-box;">
+
+    <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px;">
+        <span style="font-size:22px;font-weight:800;color:#F5F6FA;">Дашборд</span>
+        <span style="font-size:13px;color:rgba(245,246,250,0.4);">Август 2026</span>
+      </div>
+
+      <div style="background:#1B2136;border-radius:22px;padding:22px;box-shadow:8px 8px 16px #12141C,-8px -8px 16px #242C49;margin-bottom:18px;box-sizing:border-box;">
+        <div style="font-size:13px;color:rgba(245,246,250,0.5);margin-bottom:6px;">Общий баланс</div>
+        <div style="font-size:38px;font-weight:800;color:#F5F6FA;letter-spacing:-1px;">{{ totalBalanceFmt }} ₽</div>
+        <div style="display:inline-flex;margin-top:10px;padding:5px 10px;border-radius:10px;background:rgba(47,230,184,0.15);color:#2FE6B8;font-size:12px;font-weight:700;">+12,4% за месяц</div>
+      </div>
+
+      <div style="display:flex;gap:12px;overflow-x:auto;margin-bottom:24px;padding-bottom:4px;">
+        <sc-for list="{{ wallets }}" as="w" hint-placeholder-count="3">
+          <div style="flex:0 0 auto;width:132px;background:#1B2136;border-radius:18px;padding:14px;box-shadow:5px 5px 10px #12141C,-5px -5px 10px #242C49;box-sizing:border-box;">
+            <div style="width:22px;height:4px;border-radius:2px;background:{{ w.color }};margin-bottom:10px;"></div>
+            <div style="font-size:12px;color:rgba(245,246,250,0.5);margin-bottom:4px;">{{ w.name }}</div>
+            <div style="font-size:15px;font-weight:700;color:#F5F6FA;">{{ w.balanceFmt }} ₽</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#F5F6FA;margin-bottom:12px;">Расходы по категориям</div>
+        <sc-for list="{{ expenseCats }}" as="c" hint-placeholder-count="5">
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+              <span style="color:#F5F6FA;">{{ c.name }}</span>
+              <span style="color:rgba(245,246,250,0.6);font-weight:600;">{{ c.totalFmt }} ₽</span>
+            </div>
+            <div style="height:6px;border-radius:4px;background:#12141C;box-shadow:inset 2px 2px 4px #0D0F16;">
+              <div style="height:6px;border-radius:4px;background:{{ c.color }};width:{{ c.pct }}%;"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#F5F6FA;margin-bottom:12px;">Доходы по категориям</div>
+        <sc-for list="{{ incomeCats }}" as="c" hint-placeholder-count="2">
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+              <span style="color:#F5F6FA;">{{ c.name }}</span>
+              <span style="color:rgba(245,246,250,0.6);font-weight:600;">{{ c.totalFmt }} ₽</span>
+            </div>
+            <div style="height:6px;border-radius:4px;background:#12141C;box-shadow:inset 2px 2px 4px #0D0F16;">
+              <div style="height:6px;border-radius:4px;background:{{ c.color }};width:{{ c.pct }}%;"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="margin-bottom:22px;">
+        <div style="font-size:14px;font-weight:700;color:#F5F6FA;margin-bottom:14px;">Тренд по месяцам</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;height:80px;background:#1B2136;border-radius:16px;padding:10px 12px;box-shadow:5px 5px 10px #12141C,-5px -5px 10px #242C49;box-sizing:border-box;">
+          <sc-for list="{{ trend }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <div style="display:flex;align-items:flex-end;gap:3px;height:64px;">
+                <div style="width:6px;border-radius:3px;background:#2FE6B8;height:{{ t.incomeH }}px;"></div>
+                <div style="width:6px;border-radius:3px;background:#FF5C7A;height:{{ t.expenseH }}px;"></div>
+              </div>
+              <span style="font-size:10px;color:rgba(245,246,250,0.4);">{{ t.m }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+          <span style="font-size:14px;font-weight:700;color:#F5F6FA;">Последние операции</span>
+          <span style="font-size:12px;color:#7B61FF;font-weight:600;cursor:pointer;" onClick="{{ selectTransactionsTab }}">Все →</span>
+        </div>
+        <sc-for list="{{ recentTx }}" as="t" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;">
+            <div style="width:36px;height:36px;border-radius:12px;background:{{ t.catColor }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#12141C;flex-shrink:0;">{{ t.catLetter }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;color:#F5F6FA;font-weight:600;">{{ t.catName }}</div>
+              <div style="font-size:12px;color:rgba(245,246,250,0.4);">{{ t.walName }}</div>
+            </div>
+            <span style="font-size:14px;font-weight:700;color:{{ t.amountColor }};">{{ t.amountFmt }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isTransactions }}" hint-placeholder-val="{{ false }}">
+    <div>
+      <div style="font-size:22px;font-weight:800;color:#F5F6FA;margin-bottom:16px;">Журнал</div>
+      <div style="display:flex;gap:6px;background:#1B2136;border-radius:16px;padding:5px;box-shadow:5px 5px 10px #12141C,-5px -5px 10px #242C49;margin-bottom:20px;">
+        <div style="flex:1;text-align:center;padding:10px 0;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;{{ filterAllFrag }}" onClick="{{ setFilterAll }}">Все</div>
+        <div style="flex:1;text-align:center;padding:10px 0;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;{{ filterIncomeFrag }}" onClick="{{ setFilterIncome }}">Доходы</div>
+        <div style="flex:1;text-align:center;padding:10px 0;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;{{ filterExpenseFrag }}" onClick="{{ setFilterExpense }}">Расходы</div>
+      </div>
+
+      <sc-for list="{{ filteredTx }}" as="t" hint-placeholder-count="6">
+        <div>
+          <sc-if value="{{ t.showHeader }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:rgba(245,246,250,0.4);font-weight:700;text-transform:uppercase;margin:16px 0 8px;">{{ t.dateLabel }}</div>
+          </sc-if>
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;">
+            <div style="width:38px;height:38px;border-radius:12px;background:{{ t.catColor }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#12141C;flex-shrink:0;">{{ t.catLetter }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;color:#F5F6FA;font-weight:600;">{{ t.catName }}</div>
+              <div style="font-size:12px;color:rgba(245,246,250,0.4);">{{ t.walName }}</div>
+            </div>
+            <span style="font-size:14px;font-weight:700;color:{{ t.amountColor }};">{{ t.amountFmt }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    </sc-if>
+
+  </div>
+
+  <div style="position:absolute;right:20px;bottom:96px;width:58px;height:58px;border-radius:50%;background:#7B61FF;display:flex;align-items:center;justify-content:center;box-shadow:6px 6px 14px #12141C,0 8px 20px rgba(123,97,255,0.45);cursor:pointer;z-index:30;" onClick="{{ openAddExpense }}">
+    <span style="font-size:28px;color:#fff;font-weight:400;line-height:1;">+</span>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:84px;background:#1B2136;box-shadow:0 -6px 16px #12141C;display:flex;align-items:center;justify-content:space-around;padding-bottom:14px;z-index:20;box-sizing:border-box;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;" onClick="{{ selectDashboardTab }}">
+      <div style="width:8px;height:8px;border-radius:50%;background:{{ tabDashColor }};"></div>
+      <span style="font-size:12px;font-weight:600;color:{{ tabDashColor }};">Дашборд</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;" onClick="{{ selectTransactionsTab }}">
+      <div style="width:8px;height:8px;border-radius:50%;background:{{ tabTransColor }};"></div>
+      <span style="font-size:12px;font-weight:600;color:{{ tabTransColor }};">Журнал</span>
+    </div>
+  </div>
+
+  <div style="position:absolute;inset:0;background:#1B2136;z-index:50;display:flex;flex-direction:column;transition:transform .32s ease;transform:{{ addSheetTransform }};box-sizing:border-box;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:24px 20px 8px;box-sizing:border-box;">
+      <div style="width:36px;height:36px;border-radius:12px;background:#1B2136;box-shadow:4px 4px 8px #12141C,-4px -4px 8px #242C49;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(245,246,250,0.6);font-size:16px;" onClick="{{ closeAdd }}">✕</div>
+      <span style="font-size:16px;font-weight:700;color:#F5F6FA;">Новая операция</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div style="flex:1;overflow:auto;padding:8px 20px 20px;box-sizing:border-box;">
+      <div style="display:flex;gap:6px;background:#12141C;border-radius:16px;padding:5px;box-shadow:inset 3px 3px 6px #0D0F16;margin-bottom:20px;">
+        <div style="flex:1;text-align:center;padding:10px 0;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;{{ addTypeExpenseFrag }}" onClick="{{ setAddTypeExpense }}">Расход</div>
+        <div style="flex:1;text-align:center;padding:10px 0;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;{{ addTypeIncomeFrag }}" onClick="{{ setAddTypeIncome }}">Доход</div>
+      </div>
+
+      <div style="text-align:center;margin-bottom:22px;">
+        <span style="font-size:44px;font-weight:800;letter-spacing:-1px;color:{{ addAmountColor }};">{{ addAmountDisplay }}</span>
+        <span style="font-size:22px;font-weight:700;color:rgba(245,246,250,0.4);"> ₽</span>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;color:rgba(245,246,250,0.5);text-transform:uppercase;margin-bottom:10px;">Кошелёк</div>
+      <div style="display:flex;gap:10px;overflow-x:auto;margin-bottom:20px;">
+        <sc-for list="{{ walletChoices }}" as="w" hint-placeholder-count="3">
+          <div style="flex:0 0 auto;padding:10px 16px;border-radius:14px;background:#1B2136;font-size:13px;font-weight:600;color:#F5F6FA;cursor:pointer;{{ w.frag }}" onClick="{{ w.onSelect }}">{{ w.name }}</div>
+        </sc-for>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;color:rgba(245,246,250,0.5);text-transform:uppercase;margin-bottom:10px;">Категория</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px;">
+        <sc-for list="{{ addCats }}" as="c" hint-placeholder-count="6">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border-radius:14px;background:#1B2136;cursor:pointer;box-sizing:border-box;{{ c.frag }}" onClick="{{ c.onSelect }}">
+            <div style="width:32px;height:32px;border-radius:10px;background:{{ c.color }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#12141C;">{{ c.letter }}</div>
+            <span style="font-size:11px;color:#F5F6FA;text-align:center;">{{ c.name }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px;">
+        <sc-for list="{{ keypadKeys }}" as="k" hint-placeholder-count="12">
+          <div style="height:52px;border-radius:14px;background:#1B2136;box-shadow:4px 4px 8px #12141C,-4px -4px 8px #242C49;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:#F5F6FA;cursor:pointer;" onClick="{{ k.onPress }}">{{ k.label }}</div>
+        </sc-for>
+      </div>
+
+      <div style="height:56px;border-radius:18px;background:#7B61FF;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 8px 20px rgba(123,97,255,0.4);" onClick="{{ save }}">Сохранить</div>
+    </div>
+  </div>
+
+</div>
+</sc-if>
+
+</x-import>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const RAISED = '5px 5px 10px #12141C, -5px -5px 10px #242C49';
+const PRESSED = 'inset 5px 5px 10px #12141C, inset -5px -5px 10px #242C49';
+
+class Component extends DCLogic {
+  state = {
+    screen: 'login',
+    tab: 'dashboard',
+    txFilter: 'all',
+    showAdd: false,
+    addType: 'expense',
+    addAmount: '',
+    addWalletId: 'card',
+    addCategoryId: 'eda',
+    transactions: [
+      { id: 't1', dateLabel: 'Сегодня', walletId: 'card', categoryId: 'eda', type: 'expense', amount: 1240 },
+      { id: 't2', dateLabel: 'Сегодня', walletId: 'cash', categoryId: 'transport', type: 'expense', amount: 350 },
+      { id: 't3', dateLabel: 'Вчера', walletId: 'card', categoryId: 'fun', type: 'expense', amount: 2100 },
+      { id: 't4', dateLabel: 'Вчера', walletId: 'card', categoryId: 'salary', type: 'income', amount: 95000 },
+      { id: 't5', dateLabel: '28 августа', walletId: 'card', categoryId: 'jile', type: 'expense', amount: 24000 },
+      { id: 't6', dateLabel: '27 августа', walletId: 'cash', categoryId: 'eda', type: 'expense', amount: 890 },
+      { id: 't7', dateLabel: '25 августа', walletId: 'card', categoryId: 'health', type: 'expense', amount: 1600 },
+      { id: 't8', dateLabel: '22 августа', walletId: 'card', categoryId: 'side', type: 'income', amount: 12000 },
+      { id: 't9', dateLabel: '20 августа', walletId: 'cash', categoryId: 'other', type: 'expense', amount: 540 },
+      { id: 't10', dateLabel: '18 августа', walletId: 'card', categoryId: 'eda', type: 'expense', amount: 2300 },
+    ],
+  };
+
+  wallets = [
+    { id: 'card', name: 'Основная карта', balance: 42350, color: '#7B61FF' },
+    { id: 'cash', name: 'Наличные', balance: 3800, color: '#FFC857' },
+    { id: 'save', name: 'Накопления', balance: 128900, color: '#2FE6B8' },
+  ];
+
+  categories = [
+    { id: 'eda', name: 'Еда', type: 'expense', color: '#FF5C7A', letter: 'Е' },
+    { id: 'transport', name: 'Транспорт', type: 'expense', color: '#FFB454', letter: 'Т' },
+    { id: 'jile', name: 'Жильё', type: 'expense', color: '#7B61FF', letter: 'Ж' },
+    { id: 'fun', name: 'Развлечения', type: 'expense', color: '#FF7BD1', letter: 'Р' },
+    { id: 'health', name: 'Здоровье', type: 'expense', color: '#2FE6B8', letter: 'З' },
+    { id: 'other', name: 'Прочее', type: 'expense', color: '#8891B0', letter: 'П' },
+    { id: 'salary', name: 'Зарплата', type: 'income', color: '#2FE6B8', letter: 'З' },
+    { id: 'side', name: 'Подработка', type: 'income', color: '#FFC857', letter: 'П' },
+  ];
+
+  trendData = [
+    { m: 'Мар', income: 88000, expense: 61000 },
+    { m: 'Апр', income: 91000, expense: 58000 },
+    { m: 'Май', income: 87000, expense: 66000 },
+    { m: 'Июн', income: 95000, expense: 60000 },
+    { m: 'Июл', income: 99000, expense: 71000 },
+    { m: 'Авг', income: 107000, expense: 57000 },
+  ];
+
+  categoryTotalsExpense = [
+    { id: 'jile', total: 24000 },
+    { id: 'eda', total: 18400 },
+    { id: 'transport', total: 6200 },
+    { id: 'fun', total: 5100 },
+    { id: 'health', total: 3300 },
+  ];
+  categoryTotalsIncome = [
+    { id: 'salary', total: 95000 },
+    { id: 'side', total: 12000 },
+  ];
+
+  fmt(n) { return Math.round(n).toLocaleString('ru-RU'); }
+  getCategory(id) { return this.categories.find(c => c.id === id) || {}; }
+  getWallet(id) { return this.wallets.find(w => w.id === id) || {}; }
+  frag(active, color) {
+    return active
+      ? 'box-shadow:' + PRESSED + ';border:2px solid ' + color + ';'
+      : 'box-shadow:' + RAISED + ';border:2px solid transparent;';
+  }
+  toggleFrag(active) {
+    return active
+      ? 'box-shadow:' + PRESSED + ';color:#F5F6FA;background:#1B2136;'
+      : 'color:rgba(245,246,250,0.5);';
+  }
+
+  login = () => this.setState({ screen: 'app' });
+  selectDashboardTab = () => this.setState({ tab: 'dashboard' });
+  selectTransactionsTab = () => this.setState({ tab: 'transactions' });
+  openAddExpense = () => this.setState({ showAdd: true, addType: 'expense', addAmount: '', addCategoryId: 'eda' });
+  closeAdd = () => this.setState({ showAdd: false });
+  setAddTypeExpense = () => this.setState({ addType: 'expense', addCategoryId: 'eda' });
+  setAddTypeIncome = () => this.setState({ addType: 'income', addCategoryId: 'salary' });
+  selectWallet = (id) => this.setState({ addWalletId: id });
+  selectCategory = (id) => this.setState({ addCategoryId: id });
+  setFilterAll = () => this.setState({ txFilter: 'all' });
+  setFilterIncome = () => this.setState({ txFilter: 'income' });
+  setFilterExpense = () => this.setState({ txFilter: 'expense' });
+
+  pressKey = (k) => {
+    this.setState(s => {
+      let a = s.addAmount;
+      if (k === '⌫') a = a.slice(0, -1);
+      else if (k === '.') { if (!a.includes('.') && a.length > 0) a += '.'; }
+      else {
+        if (a.includes('.') && (a.split('.')[1] || '').length >= 2) return {};
+        if (a.length >= 9) return {};
+        a = a === '0' ? k : a + k;
+      }
+      return { addAmount: a };
+    });
+  };
+
+  save = () => {
+    const amt = parseFloat(this.state.addAmount) || 0;
+    if (amt <= 0) { this.closeAdd(); return; }
+    const tx = {
+      id: 'tx' + Date.now(), dateLabel: 'Сегодня',
+      walletId: this.state.addWalletId, categoryId: this.state.addCategoryId,
+      type: this.state.addType, amount: amt,
+    };
+    this.setState(s => ({
+      transactions: [tx, ...s.transactions],
+      showAdd: false, addAmount: '', tab: 'transactions',
+    }));
+  };
+
+  formatAddAmount(raw) {
+    if (!raw) return '0';
+    const parts = raw.split('.');
+    const intPart = parts[0] === '' ? '0' : parts[0];
+    const intFmt = Number(intPart).toLocaleString('ru-RU');
+    return parts.length > 1 ? intFmt + ',' + parts[1] : intFmt;
+  }
+
+  renderVals() {
+    const s = this.state;
+    const totalBalance = this.wallets.reduce((sum, w) => sum + w.balance, 0);
+    const sumExpense = this.categoryTotalsExpense.reduce((a, c) => a + c.total, 0);
+    const sumIncome = this.categoryTotalsIncome.reduce((a, c) => a + c.total, 0);
+
+    const wallets = this.wallets.map(w => ({ ...w, balanceFmt: this.fmt(w.balance) }));
+
+    const expenseCats = this.categoryTotalsExpense.map(c => {
+      const cat = this.getCategory(c.id);
+      return { ...c, name: cat.name, color: cat.color, totalFmt: this.fmt(c.total), pct: Math.round(c.total / sumExpense * 100) };
+    });
+    const incomeCats = this.categoryTotalsIncome.map(c => {
+      const cat = this.getCategory(c.id);
+      return { ...c, name: cat.name, color: cat.color, totalFmt: this.fmt(c.total), pct: Math.round(c.total / sumIncome * 100) };
+    });
+
+    const maxTrend = Math.max(...this.trendData.map(t => Math.max(t.income, t.expense)));
+    const trend = this.trendData.map(t => ({
+      ...t,
+      incomeH: Math.round(t.income / maxTrend * 64) + 4,
+      expenseH: Math.round(t.expense / maxTrend * 64) + 4,
+    }));
+
+    const allTx = s.transactions.map((t, i) => {
+      const cat = this.getCategory(t.categoryId);
+      const wal = this.getWallet(t.walletId);
+      return {
+        ...t,
+        catName: cat.name, catColor: cat.color, catLetter: cat.letter,
+        walName: wal.name,
+        amountFmt: (t.type === 'expense' ? '\u2212' : '+') + this.fmt(t.amount) + ' \u20BD',
+        amountColor: t.type === 'expense' ? '#FF5C7A' : '#2FE6B8',
+        showHeader: i === 0 || s.transactions[i - 1].dateLabel !== t.dateLabel,
+      };
+    });
+
+    const recentTx = allTx.slice(0, 4);
+    const filteredBase = allTx.filter(t => s.txFilter === 'all' || t.type === s.txFilter);
+    const filteredTx = filteredBase.map((t, i) => ({ ...t, showHeader: i === 0 || filteredBase[i - 1].dateLabel !== t.dateLabel }));
+
+    const addCats = this.categories.filter(c => c.type === s.addType).map(c => ({
+      ...c, onSelect: () => this.selectCategory(c.id), frag: this.frag(c.id === s.addCategoryId, c.color),
+    }));
+    const walletChoices = this.wallets.map(w => ({
+      ...w, onSelect: () => this.selectWallet(w.id), frag: this.frag(w.id === s.addWalletId, w.color),
+    }));
+    const keypadKeys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'].map(k => ({ label: k, onPress: () => this.pressKey(k) }));
+
+    return {
+      isLogin: s.screen === 'login',
+      isApp: s.screen === 'app',
+      isDashboard: s.tab === 'dashboard',
+      isTransactions: s.tab === 'transactions',
+      login: this.login,
+      selectDashboardTab: this.selectDashboardTab,
+      selectTransactionsTab: this.selectTransactionsTab,
+      openAddExpense: this.openAddExpense,
+      closeAdd: this.closeAdd,
+      setAddTypeExpense: this.setAddTypeExpense,
+      setAddTypeIncome: this.setAddTypeIncome,
+      setFilterAll: this.setFilterAll,
+      setFilterIncome: this.setFilterIncome,
+      setFilterExpense: this.setFilterExpense,
+      save: this.save,
+      totalBalanceFmt: this.fmt(totalBalance),
+      wallets, expenseCats, incomeCats, trend, recentTx, filteredTx,
+      tabDashColor: s.tab === 'dashboard' ? '#7B61FF' : 'rgba(245,246,250,0.4)',
+      tabTransColor: s.tab === 'transactions' ? '#7B61FF' : 'rgba(245,246,250,0.4)',
+      filterAllFrag: this.toggleFrag(s.txFilter === 'all'),
+      filterIncomeFrag: this.toggleFrag(s.txFilter === 'income'),
+      filterExpenseFrag: this.toggleFrag(s.txFilter === 'expense'),
+      addTypeExpenseFrag: this.toggleFrag(s.addType === 'expense'),
+      addTypeIncomeFrag: this.toggleFrag(s.addType === 'income'),
+      addAmountColor: s.addType === 'expense' ? '#FF5C7A' : '#2FE6B8',
+      addAmountDisplay: this.formatAddAmount(s.addAmount),
+      addSheetTransform: s.showAdd ? 'translateY(0)' : 'translateY(100%)',
+      walletChoices, addCats, keypadKeys,
+    };
+  }
+}
+
+</script>
+</body>
+</html>
