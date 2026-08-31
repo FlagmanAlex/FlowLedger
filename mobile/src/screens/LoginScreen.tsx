@@ -10,19 +10,21 @@ WebBrowser.maybeCompleteAuthSession();
 const extra = (Constants.expoConfig?.extra ?? {}) as Record<string, string | undefined>;
 
 /**
- * Требует googleWebClientId в app.json → expo.extra (OAuth-клиент типа
- * "Web application" в Google Cloud Console того же проекта, что и Firebase —
- * signInWithGoogleIdToken() проверяет id_token именно от него). Не
- * протестировано на реальном устройстве в этой сессии — нужна ручная
- * проверка после того, как клиент будет создан в консоли (см.
- * docs/FIREBASE_SETUP.md).
+ * expo-auth-session на нативных платформах (iOS/Android) требует
+ * platform-specific OAuth client ID (iosClientId/androidClientId) — попытка
+ * обойтись одним googleWebClientId падает с "Client Id property ... must be
+ * defined" при рендере. См. docs/FIREBASE_SETUP.md за тем, какие клиенты
+ * завести в Google Cloud Console. Не протестировано на реальном устройстве в
+ * этой сессии — нужна ручная проверка после того, как клиенты будут созданы.
  */
 export function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     webClientId: extra.googleWebClientId,
+    iosClientId: extra.googleIosClientId,
+    androidClientId: extra.googleAndroidClientId,
   });
 
   useEffect(() => {

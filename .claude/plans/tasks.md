@@ -11,8 +11,17 @@
 `.claude/archive/tasks/single-project-pivot.md`. Открытые продолжения:
 
 - [ ] 1. `[mobile]` Google Sign-In через `expo-auth-session` не протестирован на реальном
-      устройстве — нужен реальный `googleWebClientId` из Google Cloud Console (см.
-      `docs/FIREBASE_SETUP.md`) и ручная проверка на `npx expo start`
+      устройстве. Код-ревью (2026-08-31) нашёл и починил баг, из-за которого вход упал бы сразу
+      при рендере: на нативных платформах `expo-auth-session` требует отдельные
+      `iosClientId`/`androidClientId` в дополнение к `googleWebClientId` (добавлены в
+      `LoginScreen.tsx`/`app.json`; также добавлен отсутствовавший `ios.bundleIdentifier`) — см.
+      `docs/FIREBASE_SETUP.md` за тем, какие три OAuth-клиента завести в Google Cloud Console.
+      Остаётся: 1) реальные значения `google{Web,Ios,Android}ClientId` (нужен Google Cloud
+      аккаунт), 2) ручная проверка на `npx expo start`. Открытый вопрос: актуальный гайд Expo по
+      Google-аутентификации уже не упоминает `expo-auth-session`, а рекомендует
+      `@react-native-google-signin/google-signin` (custom native code, dev build вместо Expo Go)
+      — если после заведения клиентов вход не заработает в Expo Go, возможно потребуется миграция
+      на эту библиотеку; решение отложено до реальной проверки.
 - [ ] 2. `[control-plane]`* Деплой `firestore.rules`/`firestore.indexes.json` в реальный
       Firebase-проект — не выполнено ни в одной сессии (нет реального Google Cloud аккаунта).
       *корневой уровень, отдельного workspace `control-plane/` больше нет

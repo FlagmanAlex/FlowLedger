@@ -20,19 +20,36 @@ FlowLedger использует **один общий Firebase-проект** (F
 публичен — доступ реально ограничивают Security Rules), но всё равно передаются через `.env`/
 `app.json`, а не хардкодятся, чтобы конфиг можно было менять без правки кода.
 
-## 2. OAuth-клиент для Google Sign-In на mobile
+## 2. OAuth-клиенты для Google Sign-In на mobile
 
 Google Sign-In на web работает через `signInWithPopup` — дополнительной настройки не требует.
-На mobile (Expo) нужен ID-токен от Google, для которого требуется **OAuth 2.0 Client ID типа
-"Web application"** в [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-**того же проекта**, что и Firebase (Firebase создаёt такой автоматически при включении Google
-Sign-In — найти его можно там же, в списке credentials, либо в Firebase Console → Authentication
-→ Sign-in method → Google → Web SDK configuration). Это значение — `googleWebClientId` в
-`mobile/app.json`.
 
-Код входа (`mobile/src/screens/LoginScreen.tsx`, `expo-auth-session/providers/google`) не был
-протестирован на реальном устройстве/эмуляторе в рамках миграции — после того как
-`googleWebClientId` заполнен, нужна ручная проверка (`npx expo start`, вход через Google).
+На mobile (Expo, `expo-auth-session/providers/google`) нужен ID-токен от Google, а на нативных
+платформах (iOS/Android, в отличие от web) `expo-auth-session` требует **отдельный,
+platform-specific OAuth 2.0 Client ID** — одного `googleWebClientId` недостаточно, без
+`iosClientId`/`androidClientId` вызов падает с `Client Id property ... must be defined` уже при
+рендере экрана логина. Нужно завести три клиента в
+[Google Cloud Console](https://console.cloud.google.com/apis/credentials) **того же проекта**,
+что и Firebase:
+
+- **Web application** — создаётся автоматически при включении Google Sign-In в Firebase
+  (Firebase Console → Authentication → Sign-in method → Google → Web SDK configuration) →
+  `googleWebClientId`.
+- **iOS** — bundle ID `com.flowledger.mobile` (см. `mobile/app.json` → `expo.ios.bundleIdentifier`)
+  → `googleIosClientId`.
+- **Android** — package `com.flowledger.mobile` (см. `mobile/app.json` → `expo.android.package`)
+  + SHA-1 отпечаток keystore, которым подписывается сборка (для локальной разработки — debug
+  keystore, `keytool -list -v -keystore ~/.android/debug.keystore`) → `googleAndroidClientId`.
+
+Код входа (`mobile/src/screens/LoginScreen.tsx`) не был протестирован на реальном
+устройстве/эмуляторе в рамках миграции — после того как все три `google*ClientId` заполнены,
+нужна ручная проверка (`npx expo start`, вход через Google).
+
+Проверить перед тестом отдельно: `expo-auth-session`'s Google-провайдер сейчас не значится в
+основном гайде Expo по Google-аутентификации (актуальный гайд рекомендует
+`@react-native-google-signin/google-signin`, что требует custom native code и dev build вместо
+Expo Go) — если после заведения трёх клиентов реальный вход всё равно не заработает в Expo Go,
+это ожидаемо повод для миграции на другую библиотеку, а не баг в текущем коде.
 
 ## 3. Переменные окружения
 
@@ -57,7 +74,9 @@ VITE_FIREBASE_APP_ID=...
   "firebaseStorageBucket": "...",
   "firebaseMessagingSenderId": "...",
   "firebaseAppId": "...",
-  "googleWebClientId": "..."
+  "googleWebClientId": "...",
+  "googleIosClientId": "...",
+  "googleAndroidClientId": "..."
 }
 ```
 
