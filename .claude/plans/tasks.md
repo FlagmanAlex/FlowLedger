@@ -10,23 +10,27 @@
 Реализация реверта с BYO-Firebase на единый проект закрыта — см.
 `.claude/archive/tasks/single-project-pivot.md`. Открытые продолжения:
 
-- [ ] 1. `[mobile]` Google Sign-In через `expo-auth-session` не протестирован на реальном
-      устройстве. Код-ревью (2026-08-31) нашло и починило баг, из-за которого вход упал бы сразу
-      при рендере: на нативных платформах `expo-auth-session` требует отдельные
-      `iosClientId`/`androidClientId` в дополнение к `googleWebClientId` (добавлены в
-      `LoginScreen.tsx`/`app.json`; также добавлен отсутствовавший `ios.bundleIdentifier`) — см.
-      `docs/FIREBASE_SETUP.md` за тем, какие три OAuth-клиента завести в Google Cloud Console.
-      Прогресс по реальному проекту `flowledger2`: Firebase Web-конфиг, `googleWebClientId` и
+- [ ] 1. `[mobile]` Google Sign-In через `expo-auth-session` — приостановлено, см. ниже. Прогресс
+      по реальному проекту `flowledger2`: Firebase Web-конфиг, `googleWebClientId` и
       `googleAndroidClientId` (package `com.flowledger.mobile`, SHA-1 debug-keystore добавлен)
-      заполнены в `mobile/app.json`/`client/.env`. Остаётся: 1) `googleIosClientId` (нужно
-      зарегистрировать iOS-приложение в Firebase), 2) ручная проверка на `npx expo start` (можно
-      начинать уже сейчас на Android — веб- и Android-конфиг готовы), 3) в Firebase Console
-      удалить старое Android-приложение с опечаткой в package name
-      (`com.flagmanalex.flowledgeradnroid`) — не блокирует, просто мусор. Открытый вопрос:
-      актуальный гайд Expo по Google-аутентификации уже не упоминает `expo-auth-session`, а
-      рекомендует `@react-native-google-signin/google-signin` (custom native code, dev build
-      вместо Expo Go) — если реальный вход в Expo Go не заработает, возможно потребуется миграция
-      на эту библиотеку; решение отложено до реальной проверки.
+      заполнены в `mobile/app.json`; `mobile/metro.config.js` добавлен (монорепо + резолв
+      `./foo.js` → `./foo.ts` из `shared`/`interfaces`, чего Metro сам не умеет в отличие от
+      Vite). Реальная проверка (2026-08-31, Android, Expo Go) дошла до экрана Google-логина, но
+      Google вернул `Error 400: invalid_request — doesn't comply with Google's OAuth 2.0 policy`.
+      **Причина подтверждена**: Android/iOS-тип OAuth-клиента в Google Cloud Console привязан к
+      подписи (package+SHA-1) конкретного приложения — при запуске через **Expo Go** реальный
+      запрос уходит от имени самого Expo Go, а не `com.flowledger.mobile`, отсюда отказ. Старый
+      обходной путь (Expo AuthSession proxy, `useProxy: true`) отключён в актуальных SDK — отсюда
+      и то, что гайд Expo по Google-аутентификации больше не описывает `expo-auth-session`, а
+      рекомендует `@react-native-google-signin/google-signin` (тоже требует dev build, не Expo
+      Go). Следующий шаг (не начат) — собрать локальный dev build (`npx expo run:android`,
+      реальная подпись совпадёт с зарегистрированной) вместо Expo Go; библиотеку менять не
+      обязательно. Остаётся отдельно: `googleIosClientId` (iOS-приложение ещё не заведено в
+      Firebase), и в Firebase Console можно удалить старое Android-приложение с опечаткой в
+      package name (`com.flagmanalex.flowledgeradnroid`) — не блокирует.
+      Приостановлено 2026-08-31 в пользу проверки Google-логина на `[client]` (веб) — там
+      функционал нужен быстрее и `signInWithPopup` не имеет проблемы Expo Go (не завязан на
+      Android/iOS OAuth-клиенты, только на `authDomain` того же Firebase-проекта).
 - [ ] 2. `[control-plane]`* Деплой `firestore.rules`/`firestore.indexes.json` в реальный
       Firebase-проект — не выполнено ни в одной сессии (нет реального Google Cloud аккаунта).
       *корневой уровень, отдельного workspace `control-plane/` больше нет
