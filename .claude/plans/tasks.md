@@ -94,10 +94,20 @@
       - [ ] Живая проверка с реальным Firebase-логином (в песочнице сессии нет рабочего `.env`,
             как и у прошлых visual-QA пунктов выше) — весь флоу: создание ссылки, копирование,
             принятие вторым аккаунтом, совместная работа с данными, отзыв доступа/выход.
-      - [ ] Деплой обновлённого `firestore.rules` в реальный проект `flowledger2` (правила
-            поменяли `isOwner()` на `hasAccess()` для wallets/categories/transactions/
-            recurringTemplates и добавили `invites`/`users/{ownerId}/members` — задеплоено пока
-            только было `firestore.rules` до этой фичи, см. пункт 2 выше).
+      - [ ] **Деплой обновлённого `firestore.rules` в реальный проект `flowledger2` — подтверждённая
+            причина бага «кнопка „Создать ссылку-приглашение“ в Settings ничего не делает по клику»**
+            (репортнуто 2026-09-01). Правила поменяли `isOwner()` на `hasAccess()` для
+            wallets/categories/transactions/recurringTemplates и добавили `invites`/
+            `users/{ownerId}/members` — на проде задеплоена версия правил ещё до этой фичи (см.
+            пункт 2 выше), поэтому `invites` там не описана вообще — Firestore по умолчанию
+            запрещает и чтение, и запись, `createInvite.mutate()` в `SharingSettings.tsx` падает с
+            `permission-denied` молча (ошибка нигде не показывалась — заодно добавлено отображение
+            `createInvite.isError`/`revokeInvite.isError`, см. `SharingSettings.tsx`). Автодеплой
+            правил добавлен 2026-09-01 — `.github/workflows/deploy-firestore-rules.yml` (детали в
+            `memory.md` → «Деплой»), но ещё не сработал ни разу: ждёт, пока пользователь заведёт
+            секрет `FIREBASE_SERVICE_ACCOUNT` в GitHub и смёржит эту ветку в `main` (текущий пуш в
+            `firestore.rules` был раньше, чем появился workflow, — заново запушить/смёржить,
+            чтобы триггернуть). До первого успешного прогона кнопка на проде не заработает.
       - [ ] `[mobile]` Перенос UI общего доступа (Settings → «Общий доступ», `/invite/:id`) в
             Expo/RN — не начато, `shared`-слой (repositories/hooks) общий и мобильному не нужен
             отдельной реализации.
