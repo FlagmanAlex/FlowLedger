@@ -6,18 +6,18 @@ import {
   useCreateWallet,
   useWallets,
   walletFormSchema,
-  type UseAuthResult,
   type WalletFormValues,
 } from '@flowledger/shared';
+import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { colorForId } from '@/lib/palette';
 import { formatAmount } from '@/lib/format';
 import './forms.css';
 
 export function Wallets() {
-  const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { data: wallets, isLoading } = useWallets(user?.uid);
-  const createWallet = useCreateWallet(user?.uid);
+  const { ownerId } = useOutletContext<MainOutletContext>();
+  const { data: wallets, isLoading } = useWallets(ownerId);
+  const createWallet = useCreateWallet(ownerId);
   const archiveWallet = useArchiveWallet();
 
   const { register, handleSubmit, reset, formState } = useForm<WalletFormValues>({
@@ -26,7 +26,7 @@ export function Wallets() {
   });
 
   async function onSubmit(values: WalletFormValues) {
-    if (!user) return;
+    if (!ownerId) return;
     await createWallet.mutateAsync(values);
     reset();
   }

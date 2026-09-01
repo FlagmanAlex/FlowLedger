@@ -4,7 +4,7 @@ import {
   type FirestoreDataConverter,
   collection,
 } from 'firebase/firestore';
-import type { Category, Transaction, Wallet } from '@flowledger/interfaces';
+import type { Category, Invite, Member, Transaction, Wallet } from '@flowledger/interfaces';
 import { getFirestoreInstance } from '../firebase/firebase.js';
 
 function converter<T extends DocumentData>(): FirestoreDataConverter<T> {
@@ -25,5 +25,17 @@ export function categoriesCollection(): CollectionReference<Category> {
 export function transactionsCollection(): CollectionReference<Transaction> {
   return collection(getFirestoreInstance(), 'transactions').withConverter(
     converter<Transaction>(),
+  );
+}
+
+export function invitesCollection(): CollectionReference<Invite> {
+  return collection(getFirestoreInstance(), 'invites').withConverter(converter<Invite>());
+}
+
+/** Подколлекция `users/{ownerId}/members` — кому предоставлен доступ к базе
+ *  `ownerId` (см. `Member`). */
+export function membersCollection(ownerId: string): CollectionReference<Member> {
+  return collection(getFirestoreInstance(), 'users', ownerId, 'members').withConverter(
+    converter<Member>(),
   );
 }

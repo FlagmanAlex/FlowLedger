@@ -7,6 +7,7 @@ import './AddTransactionModal.css';
 
 interface AddTransactionModalProps {
   user: UseAuthResult['user'];
+  ownerId: string | undefined;
   wallets: Wallet[];
   categories: Category[];
   defaultType: TransactionType;
@@ -19,12 +20,13 @@ function today(): string {
 
 export function AddTransactionModal({
   user,
+  ownerId,
   wallets,
   categories,
   defaultType,
   onClose,
 }: AddTransactionModalProps) {
-  const createTransaction = useCreateTransaction(user?.uid);
+  const createTransaction = useCreateTransaction(ownerId);
 
   const [type, setType] = useState<TransactionType>(defaultType);
   const [amount, setAmount] = useState('');

@@ -9,6 +9,7 @@ import { Wallets } from '@/components/screens/Wallets';
 import { Categories } from '@/components/screens/Categories';
 import { Reports } from '@/components/screens/Reports';
 import { Settings } from '@/components/screens/Settings';
+import { AcceptInvite } from '@/components/screens/AcceptInvite';
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
     path: '/',
     element: <AuthLayout />,
     children: [
+      { path: 'invite/:inviteId', element: <AcceptInvite /> },
       {
         element: <MainLayout />,
         children: [

@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import {
-  useCategories,
-  useTransactions,
-  useWallets,
-  type UseAuthResult,
-} from '@flowledger/shared';
+import { useCategories, useTransactions, useWallets } from '@flowledger/shared';
 import type { Transaction, TransactionType } from '@flowledger/interfaces';
+import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { AddTransactionModal } from '@/components/ui/AddTransactionModal';
 import { colorForId } from '@/lib/palette';
@@ -29,7 +25,7 @@ function groupByDate(transactions: Transaction[]) {
 }
 
 export function Transactions() {
-  const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
+  const { user, ownerId } = useOutletContext<MainOutletContext>();
   const [searchParams] = useSearchParams();
   const categoryId = searchParams.get('categoryId') ?? undefined;
 
@@ -37,9 +33,9 @@ export function Transactions() {
   const [showAdd, setShowAdd] = useState(false);
   const [addType, setAddType] = useState<TransactionType>('expense');
 
-  const { data: wallets } = useWallets(user?.uid);
-  const { data: categories } = useCategories(user?.uid);
-  const { data: transactions, isLoading } = useTransactions(user?.uid, { categoryId });
+  const { data: wallets } = useWallets(ownerId);
+  const { data: categories } = useCategories(ownerId);
+  const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId });
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
@@ -120,6 +116,7 @@ export function Transactions() {
       {showAdd && (
         <AddTransactionModal
           user={user}
+          ownerId={ownerId}
           wallets={(wallets ?? []).filter((w) => !w.archived)}
           categories={categories ?? []}
           defaultType={addType}

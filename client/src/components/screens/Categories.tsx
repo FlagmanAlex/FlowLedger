@@ -7,16 +7,16 @@ import {
   useDeleteCategory,
   categoryFormSchema,
   type CategoryFormValues,
-  type UseAuthResult,
 } from '@flowledger/shared';
+import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { colorForId } from '@/lib/palette';
 import './forms.css';
 
 export function Categories() {
-  const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { data: categories, isLoading } = useCategories(user?.uid);
-  const createCategory = useCreateCategory(user?.uid);
+  const { ownerId } = useOutletContext<MainOutletContext>();
+  const { data: categories, isLoading } = useCategories(ownerId);
+  const createCategory = useCreateCategory(ownerId);
   const deleteCategory = useDeleteCategory();
 
   const { register, handleSubmit, reset, formState } = useForm<CategoryFormValues>({
@@ -25,7 +25,7 @@ export function Categories() {
   });
 
   async function onSubmit(values: CategoryFormValues) {
-    if (!user) return;
+    if (!ownerId) return;
     await createCategory.mutateAsync(values);
     reset();
   }
