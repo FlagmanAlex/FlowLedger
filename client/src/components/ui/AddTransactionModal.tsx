@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import {
   useCreateTransaction,
   useDeleteTransaction,
+  useHolders,
   useUpdateTransaction,
   type UseAuthResult,
 } from '@flowledger/shared';
 import type { Category, Transaction, TransactionType, Wallet } from '@flowledger/interfaces';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { WalletPicker } from '@/components/ui/WalletPicker';
 import { colorForId } from '@/lib/palette';
 import './AddTransactionModal.css';
 
@@ -36,6 +38,7 @@ export function AddTransactionModal({
   const createTransaction = useCreateTransaction(ownerId);
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
+  const { data: holders } = useHolders(ownerId);
   const isEditing = Boolean(transaction);
 
   const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType);
@@ -153,19 +156,7 @@ export function AddTransactionModal({
 
         <div className="add-tx__section">
           <h3 className="section-title">Кошелёк</h3>
-          <div className="add-tx__chip-row">
-            {wallets.map((w) => (
-              <button
-                key={w.id}
-                type="button"
-                className={`chip${walletId === w.id ? ' is-selected' : ''}`}
-                style={{ ['--chip-accent' as string]: w.color ?? colorForId(w.id) }}
-                onClick={() => setWalletId(w.id)}
-              >
-                {w.name}
-              </button>
-            ))}
-          </div>
+          <WalletPicker wallets={wallets} holders={holders} selectedId={walletId} onSelect={setWalletId} />
         </div>
 
         <div className="add-tx__section">

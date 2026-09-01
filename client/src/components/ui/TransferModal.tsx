@@ -2,11 +2,12 @@ import { useState } from 'react';
 import {
   useCreateTransaction,
   useDeleteTransaction,
+  useHolders,
   useUpdateTransaction,
   type UseAuthResult,
 } from '@flowledger/shared';
 import type { Transaction, Wallet } from '@flowledger/interfaces';
-import { colorForId } from '@/lib/palette';
+import { WalletPicker } from '@/components/ui/WalletPicker';
 import { formatAmount } from '@/lib/format';
 import './TransferModal.css';
 
@@ -30,6 +31,7 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
   const createTransaction = useCreateTransaction(ownerId);
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
+  const { data: holders } = useHolders(ownerId);
   const isEditing = Boolean(transaction);
 
   const [fromWalletId, setFromWalletId] = useState<string | undefined>(
@@ -132,38 +134,18 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
 
         <div className="transfer-modal__section">
           <h3 className="section-title">Откуда</h3>
-          <div className="transfer-modal__chip-row">
-            {wallets.map((w) => (
-              <button
-                key={w.id}
-                type="button"
-                className={`chip${fromWalletId === w.id ? ' is-selected' : ''}`}
-                style={{ ['--chip-accent' as string]: w.color ?? colorForId(w.id) }}
-                onClick={() => setFromWalletId(w.id)}
-              >
-                {w.name}
-              </button>
-            ))}
-          </div>
+          <WalletPicker wallets={wallets} holders={holders} selectedId={fromWalletId} onSelect={setFromWalletId} />
         </div>
 
         <div className="transfer-modal__section">
           <h3 className="section-title">Куда</h3>
-          <div className="transfer-modal__chip-row">
-            {wallets
-              .filter((w) => w.id !== fromWalletId)
-              .map((w) => (
-                <button
-                  key={w.id}
-                  type="button"
-                  className={`chip${toWalletId === w.id ? ' is-selected' : ''}`}
-                  style={{ ['--chip-accent' as string]: w.color ?? colorForId(w.id) }}
-                  onClick={() => setToWalletId(w.id)}
-                >
-                  {w.name}
-                </button>
-              ))}
-          </div>
+          <WalletPicker
+            wallets={wallets}
+            holders={holders}
+            selectedId={toWalletId}
+            onSelect={setToWalletId}
+            excludeId={fromWalletId}
+          />
         </div>
 
         {!sameCurrency && fromWallet && toWallet && (
