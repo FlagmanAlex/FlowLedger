@@ -117,16 +117,28 @@ function OwnerSharingCard({ user, ownerId }: { user: NonNullable<UseAuthResult['
               Отозвать ссылку
             </button>
           </div>
+          {revokeInvite.isError && (
+            <p className="state-message" role="alert">
+              Не удалось отозвать ссылку. Попробуйте ещё раз.
+            </p>
+          )}
         </div>
       ) : (
-        <button
-          type="button"
-          className="neo-button neo-button--accent"
-          onClick={() => createInvite.mutate()}
-          disabled={createInvite.isPending}
-        >
-          {createInvite.isPending ? 'Создаём ссылку...' : 'Создать ссылку-приглашение'}
-        </button>
+        <>
+          <button
+            type="button"
+            className="neo-button neo-button--accent"
+            onClick={() => createInvite.mutate()}
+            disabled={createInvite.isPending}
+          >
+            {createInvite.isPending ? 'Создаём ссылку...' : 'Создать ссылку-приглашение'}
+          </button>
+          {createInvite.isError && (
+            <p className="state-message" role="alert">
+              Не удалось создать ссылку. Попробуйте ещё раз.
+            </p>
+          )}
+        </>
       )}
     </section>
   );
