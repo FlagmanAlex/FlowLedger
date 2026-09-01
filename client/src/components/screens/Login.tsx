@@ -7,22 +7,17 @@ import {
 } from '@flowledger/shared';
 import './Login.css';
 
-/** Попапы Google-логина ненадёжны на мобильных браузерах (часто дают
- *  auth/network-request-failed вместо реального сбоя сети) — там
- *  используем редирект на страницу Google вместо всплывающего окна. */
-function isMobileBrowser(): boolean {
-  const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
-  if (nav.userAgentData) return Boolean(nav.userAgentData.mobile);
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-}
-
-// Ставим перед уходом на страницу Google и снимаем после возврата — так
-// отличаем «обычное первое открытие /login» (getRedirectResult() уже
-// корректно резолвится в null) от «вернулись с Google, а результата нет»
-// (getRedirectResult() тоже резолвится в null, но это баг/сбой, а не
-// норма) — второй случай без этого флага проходил бы вообще без обратной
-// связи для пользователя.
+// Ставим перед уходом на страницу Google (запасной путь через редирект,
+// см. handleSignIn) и снимаем после возврата — так отличаем «обычное
+// первое открытие /login» (getRedirectResult() уже корректно резолвится
+// в null) от «вернулись с Google, а результата нет» (тоже null, но это
+// сбой, а не норма) — второй случай без этого флага проходил бы вообще
+// без обратной связи для пользователя.
 const REDIRECT_PENDING_KEY = 'fl_google_redirect_pending';
+
+function errorCode(err: unknown): string | undefined {
+  return err && typeof err === 'object' && 'code' in err ? String((err as { code: unknown }).code) : undefined;
+}
 
 export function Login() {
   const navigate = useNavigate();
@@ -33,8 +28,7 @@ export function Login() {
   const from = (location.state as { from?: { pathname: string; search: string } } | null)?.from;
 
   // Забираем результат signInWithGoogleRedirect после возврата со страницы
-  // Google — на обычном первом открытии экрана (без ожидающего редиректа)
-  // резолвится в null почти мгновенно, поэтому кнопку этим не блокируем.
+  // Google, если основной путь (попап) упал на запасной.
   useEffect(() => {
     let cancelled = false;
     const wasPending = sessionStorage.getItem(REDIRECT_PENDING_KEY) === '1';
@@ -65,18 +59,36 @@ export function Login() {
     setError(null);
     setSigningIn(true);
     try {
-      if (isMobileBrowser()) {
-        sessionStorage.setItem(REDIRECT_PENDING_KEY, '1');
-        await signInWithGoogleRedirect();
-        return;
-      }
       await signInWithGooglePopup();
       navigate(from ? `${from.pathname}${from.search}` : '/', { replace: true });
+      return;
     } catch (err) {
-      sessionStorage.removeItem(REDIRECT_PENDING_KEY);
-      console.error('Google sign-in failed', err);
+      const code = errorCode(err);
+
+      // Пользователь сам закрыл окно Google — не ошибка, просто молча ждём.
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setSigningIn(false);
+        return;
+      }
+
+      // Попап реально не открылся (заблокирован браузером/окружением) —
+      // единственный случай, где имеет смысл редирект как запасной путь.
+      if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+        try {
+          sessionStorage.setItem(REDIRECT_PENDING_KEY, '1');
+          await signInWithGoogleRedirect();
+          return;
+        } catch (redirectErr) {
+          sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+          console.error('Google redirect fallback failed', redirectErr);
+          setError(redirectErr instanceof Error ? redirectErr.message : 'Sign-in failed');
+          setSigningIn(false);
+          return;
+        }
+      }
+
+      console.error('Google popup sign-in failed', err);
       setError(err instanceof Error ? err.message : 'Sign-in failed');
-    } finally {
       setSigningIn(false);
     }
   }
