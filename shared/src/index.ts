@@ -1,6 +1,7 @@
 export * from './firebase/firebase.js';
 export * from './firebase/auth.js';
 export * from './repositories/wallets.repo.js';
+export * from './repositories/currencies.repo.js';
 export * from './repositories/categories.repo.js';
 export * from './repositories/transactions.repo.js';
 export * from './repositories/users.repo.js';
@@ -8,6 +9,7 @@ export * from './repositories/invites.repo.js';
 export * from './repositories/members.repo.js';
 export * from './hooks/useAuth.js';
 export * from './hooks/useWallets.js';
+export * from './hooks/useCurrencies.js';
 export * from './hooks/useCategories.js';
 export * from './hooks/useTransactions.js';
 export * from './hooks/useDashboard.js';

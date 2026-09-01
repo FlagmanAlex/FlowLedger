@@ -161,24 +161,27 @@ export function Dashboard() {
           recentTransactions.map((t) => {
             const category = t.categoryId ? categoryById.get(t.categoryId) : undefined;
             const wallet = walletById.get(t.walletId);
+            const isTransfer = t.type === 'transfer';
             return (
               <div key={t.id} className="list-row">
                 <IconCircle
-                  label={category?.name ?? '·'}
+                  label={isTransfer ? '⇄' : category?.name ?? '·'}
                   color={category ? category.color ?? colorForId(category.id) : colorForId(t.walletId)}
                   size={36}
                 />
                 <div className="list-row__main">
                   <div className="list-row__title">
-                    {category?.name ?? (t.categoryId ? 'Без категории' : t.description ?? 'Операция')}
+                    {isTransfer
+                      ? 'Перевод'
+                      : category?.name ?? (t.categoryId ? 'Без категории' : t.description ?? 'Операция')}
                   </div>
                   <div className="list-row__subtitle">{wallet?.name ?? ''}</div>
                 </div>
                 <div
-                  className={`recent-row__amount ${t.type === 'expense' ? 'amount-negative' : 'amount-positive'}`}
+                  className={`recent-row__amount ${isTransfer ? 'amount-neutral' : t.type === 'expense' ? 'amount-negative' : 'amount-positive'}`}
                 >
-                  {t.type === 'expense' ? '−' : '+'}
-                  {formatAmount(Math.abs(t.amount))} ₽
+                  {!isTransfer && (t.type === 'expense' ? '−' : '+')}
+                  {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
                 </div>
               </div>
             );

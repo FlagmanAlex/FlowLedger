@@ -4,7 +4,7 @@ import {
   type FirestoreDataConverter,
   collection,
 } from 'firebase/firestore';
-import type { Category, Invite, Member, Transaction, Wallet } from '@flowledger/interfaces';
+import type { Category, Currency, Invite, Member, Transaction, Wallet } from '@flowledger/interfaces';
 import { getFirestoreInstance } from '../firebase/firebase.js';
 
 function converter<T extends DocumentData>(): FirestoreDataConverter<T> {
@@ -26,6 +26,10 @@ export function transactionsCollection(): CollectionReference<Transaction> {
   return collection(getFirestoreInstance(), 'transactions').withConverter(
     converter<Transaction>(),
   );
+}
+
+export function currenciesCollection(): CollectionReference<Currency> {
+  return collection(getFirestoreInstance(), 'currencies').withConverter(converter<Currency>());
 }
 
 export function invitesCollection(): CollectionReference<Invite> {

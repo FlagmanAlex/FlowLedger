@@ -5,6 +5,7 @@ import { useOutletContext } from 'react-router-dom';
 import {
   useArchiveWallet,
   useCreateWallet,
+  useCurrencies,
   useUpdateWallet,
   useWallets,
   walletFormSchema,
@@ -15,25 +16,28 @@ import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { EditWalletModal } from '@/components/ui/EditWalletModal';
+import { TransferModal } from '@/components/ui/TransferModal';
 import { colorForId } from '@/lib/palette';
 import { formatAmount } from '@/lib/format';
 import './forms.css';
 
 export function Wallets() {
-  const { ownerId } = useOutletContext<MainOutletContext>();
+  const { user, ownerId } = useOutletContext<MainOutletContext>();
   const { data: wallets, isLoading } = useWallets(ownerId);
+  const { data: currencies } = useCurrencies(ownerId);
   const createWallet = useCreateWallet(ownerId);
   const archiveWallet = useArchiveWallet();
   const updateWallet = useUpdateWallet();
   const [openWalletId, setOpenWalletId] = useState<string | null>(null);
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
 
   const activeWallets = wallets?.filter((w) => !w.archived) ?? [];
   const archivedWallets = wallets?.filter((w) => w.archived) ?? [];
 
   const { register, handleSubmit, reset, formState } = useForm<WalletFormValues>({
     resolver: zodResolver(walletFormSchema),
-    defaultValues: { name: '', currency: 'USD' },
+    defaultValues: { name: '', currency: 'RUB' },
   });
 
   async function onSubmit(values: WalletFormValues) {
@@ -44,7 +48,14 @@ export function Wallets() {
 
   return (
     <div className="page">
-      <h1 className="page__title">Кошельки</h1>
+      <div className="page__header">
+        <h1 className="page__title">Кошельки</h1>
+        {activeWallets.length >= 2 && (
+          <button type="button" className="neo-button neo-button--sm" onClick={() => setShowTransfer(true)}>
+            Перевод
+          </button>
+        )}
+      </div>
 
       <section className="neo-card">
         <form className="create-form" onSubmit={handleSubmit(onSubmit)}>
@@ -55,7 +66,13 @@ export function Wallets() {
             )}
           </div>
           <div className="field">
-            <input className="neo-input" placeholder="Валюта" {...register('currency')} />
+            <select className="neo-input" {...register('currency')}>
+              {(currencies ?? []).map((c) => (
+                <option key={c.id} value={c.code}>
+                  {c.code}
+                </option>
+              ))}
+            </select>
           </div>
           <button type="submit" className="neo-button neo-button--accent" disabled={createWallet.isPending}>
             Добавить
@@ -118,6 +135,15 @@ export function Wallets() {
 
       {editingWallet && (
         <EditWalletModal wallet={editingWallet} onClose={() => setEditingWallet(null)} />
+      )}
+
+      {showTransfer && (
+        <TransferModal
+          user={user}
+          ownerId={ownerId}
+          wallets={activeWallets}
+          onClose={() => setShowTransfer(false)}
+        />
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import type { Transaction, TransactionType } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { AddTransactionModal } from '@/components/ui/AddTransactionModal';
+import { TransferModal } from '@/components/ui/TransferModal';
 import { colorForId } from '@/lib/palette';
 import { formatAmount, formatDateHeader } from '@/lib/format';
 import './Transactions.css';
@@ -33,6 +34,7 @@ export function Transactions() {
   const [showAdd, setShowAdd] = useState(false);
   const [addType, setAddType] = useState<TransactionType>('expense');
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
 
   const { data: wallets } = useWallets(ownerId);
   const { data: categories } = useCategories(ownerId);
@@ -84,8 +86,32 @@ export function Transactions() {
           <div key={group.date}>
             <div className="date-header">{formatDateHeader(group.date)}</div>
             {group.items.map((t) => {
-              const category = t.categoryId ? categoryById.get(t.categoryId) : undefined;
               const wallet = walletById.get(t.walletId);
+
+              if (t.type === 'transfer') {
+                const toWallet = t.transferToWalletId ? walletById.get(t.transferToWalletId) : undefined;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="list-row list-row--clickable"
+                    onClick={() => setEditingTransfer(t)}
+                  >
+                    <IconCircle label="⇄" color={colorForId(t.walletId)} size={38} />
+                    <div className="list-row__main">
+                      <div className="list-row__title">Перевод</div>
+                      <div className="list-row__subtitle">
+                        {wallet?.name ?? ''} → {toWallet?.name ?? ''}
+                      </div>
+                    </div>
+                    <div className="amount-neutral">
+                      {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
+                    </div>
+                  </button>
+                );
+              }
+
+              const category = t.categoryId ? categoryById.get(t.categoryId) : undefined;
               return (
                 <button
                   key={t.id}
@@ -106,7 +132,7 @@ export function Transactions() {
                   </div>
                   <div className={t.type === 'expense' ? 'amount-negative' : 'amount-positive'}>
                     {t.type === 'expense' ? '−' : '+'}
-                    {formatAmount(Math.abs(t.amount))} ₽
+                    {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
                   </div>
                 </button>
               );
@@ -139,6 +165,16 @@ export function Transactions() {
           defaultType={editingTx.type === 'expense' ? 'expense' : 'income'}
           transaction={editingTx}
           onClose={() => setEditingTx(null)}
+        />
+      )}
+
+      {editingTransfer && (
+        <TransferModal
+          user={user}
+          ownerId={ownerId}
+          wallets={wallets ?? []}
+          transaction={editingTransfer}
+          onClose={() => setEditingTransfer(null)}
         />
       )}
     </div>

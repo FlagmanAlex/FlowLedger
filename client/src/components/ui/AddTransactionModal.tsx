@@ -146,7 +146,9 @@ export function AddTransactionModal({
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9,.]/g, ''))}
             autoFocus
           />
-          <span className="add-tx__amount-suffix">₽</span>
+          <span className="add-tx__amount-suffix">
+            {wallets.find((w) => w.id === walletId)?.currency ?? ''}
+          </span>
         </div>
 
         <div className="add-tx__section">

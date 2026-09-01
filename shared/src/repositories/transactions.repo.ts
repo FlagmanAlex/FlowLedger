@@ -42,6 +42,40 @@ function signedAmount(type: Transaction['type'], amount: number): number {
   return type === 'expense' ? -Math.abs(amount) : Math.abs(amount);
 }
 
+/** Итоговый курс перевода — номинальный курс, уменьшенный на комиссию банка. */
+function effectiveRate(exchangeRate = 1, commissionPercent = 0): number {
+  return exchangeRate * (1 - commissionPercent / 100);
+}
+
+/** Изменение баланса по каждому затронутому кошельку от одной операции —
+ *  для income/expense это один кошелёк, для transfer сразу два (списание
+ *  в валюте источника, зачисление в валюте назначения по effectiveRate).
+ *  sign позволяет применить дельту (1) или отменить её (-1) одной и той
+ *  же функцией — используется и для create/delete, и для пересчёта при
+ *  update. */
+function walletDeltas(
+  t: Pick<Transaction, 'type' | 'walletId' | 'transferToWalletId' | 'amount' | 'exchangeRate' | 'commissionPercent'>,
+  sign: 1 | -1,
+): Map<string, number> {
+  const deltas = new Map<string, number>();
+  const add = (walletId: string, amount: number) => deltas.set(walletId, (deltas.get(walletId) ?? 0) + amount);
+
+  if (t.type === 'transfer' && t.transferToWalletId) {
+    add(t.walletId, sign * -Math.abs(t.amount));
+    add(t.transferToWalletId, sign * Math.abs(t.amount) * effectiveRate(t.exchangeRate, t.commissionPercent));
+  } else {
+    add(t.walletId, sign * signedAmount(t.type, t.amount));
+  }
+
+  return deltas;
+}
+
+function mergeDeltas(target: Map<string, number>, source: Map<string, number>): void {
+  for (const [walletId, delta] of source) {
+    target.set(walletId, (target.get(walletId) ?? 0) + delta);
+  }
+}
+
 /**
  * Нет Cloud Function для баланса кошельков (Functions требуют платный
  * Blaze-план), поэтому клиент денормализует wallets.balance сам через
@@ -56,9 +90,9 @@ export async function createTransaction(
 
   await runTransaction(getFirestoreInstance(), async (tx) => {
     tx.set(newDocRef, { ...input, userId, createdAt: now, updatedAt: now } as Transaction);
-    tx.update(doc(walletsCollection(), input.walletId), {
-      balance: increment(signedAmount(input.type, input.amount)),
-    });
+    for (const [walletId, delta] of walletDeltas(input, 1)) {
+      tx.update(doc(walletsCollection(), walletId), { balance: increment(delta) });
+    }
   });
 
   return newDocRef.id;
@@ -75,18 +109,13 @@ export async function updateTransaction(id: string, patch: Partial<Transaction>)
     const after = { ...beforeData, ...patch };
     tx.update(ref, { ...patch, updatedAt: new Date().toISOString() });
 
-    const beforeDelta = -signedAmount(beforeData.type, beforeData.amount);
-    const afterDelta = signedAmount(after.type, after.amount);
+    const deltas = walletDeltas(beforeData, -1);
+    mergeDeltas(deltas, walletDeltas(after, 1));
 
-    if (beforeData.walletId === after.walletId) {
-      if (beforeDelta + afterDelta !== 0) {
-        tx.update(doc(walletsCollection(), after.walletId), {
-          balance: increment(beforeDelta + afterDelta),
-        });
+    for (const [walletId, delta] of deltas) {
+      if (delta !== 0) {
+        tx.update(doc(walletsCollection(), walletId), { balance: increment(delta) });
       }
-    } else {
-      tx.update(doc(walletsCollection(), beforeData.walletId), { balance: increment(beforeDelta) });
-      tx.update(doc(walletsCollection(), after.walletId), { balance: increment(afterDelta) });
     }
   });
 }
@@ -100,8 +129,8 @@ export async function deleteTransaction(id: string): Promise<void> {
     if (!data) return;
 
     tx.delete(ref);
-    tx.update(doc(walletsCollection(), data.walletId), {
-      balance: increment(-signedAmount(data.type, data.amount)),
-    });
+    for (const [walletId, delta] of walletDeltas(data, -1)) {
+      tx.update(doc(walletsCollection(), walletId), { balance: increment(delta) });
+    }
   });
 }

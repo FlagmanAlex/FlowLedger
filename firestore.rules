@@ -97,6 +97,13 @@ service cloud.firestore {
         request.resource.data.userId == resource.data.userId;
     }
 
+    match /currencies/{currencyId} {
+      allow read, delete: if hasAccess(resource.data.userId);
+      allow create: if hasAccess(request.resource.data.userId);
+      allow update: if hasAccess(resource.data.userId) &&
+        request.resource.data.userId == resource.data.userId;
+    }
+
     match /transactions/{transactionId} {
       allow read, delete: if hasAccess(resource.data.userId);
       allow create: if hasAccess(request.resource.data.userId);

@@ -324,6 +324,10 @@ textarea.neo-input {
   color: var(--negative);
 }
 
+.amount-neutral {
+  color: var(--text-secondary);
+}
+
 .section-title {
   font-size: var(--fs-13);
   font-weight: var(--fw-bold);
