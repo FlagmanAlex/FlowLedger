@@ -70,7 +70,3 @@
   box-shadow: var(--neo-inset);
   border-color: var(--accent);
 }
-
-.add-tx__delete {
-  color: var(--negative);
-}

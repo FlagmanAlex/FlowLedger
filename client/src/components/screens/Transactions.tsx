@@ -100,7 +100,7 @@ export function Transactions() {
                   />
                   <div className="list-row__main">
                     <div className="list-row__title">
-                      {category?.name ?? t.description ?? 'Операция'}
+                      {category?.name ?? (t.categoryId ? 'Без категории' : t.description ?? 'Операция')}
                     </div>
                     <div className="list-row__subtitle">{wallet?.name ?? ''}</div>
                   </div>

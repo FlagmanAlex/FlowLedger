@@ -78,6 +78,10 @@
   font-size: var(--fs-13);
 }
 
+.neo-button--danger {
+  color: var(--negative);
+}
+
 .fab {
   position: fixed;
   right: var(--space-5);

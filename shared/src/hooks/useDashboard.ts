@@ -56,7 +56,7 @@ export function useDashboard(userId: string | undefined) {
       Array.from(map.entries())
         .map(([categoryId, total]) => ({
           categoryId,
-          categoryName: categoryNameById.get(categoryId) ?? 'Unknown',
+          categoryName: categoryNameById.get(categoryId) ?? 'Без категории',
           total,
         }))
         .sort((a, b) => b.total - a.total);

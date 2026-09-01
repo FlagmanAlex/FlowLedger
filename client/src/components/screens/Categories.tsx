@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useOutletContext } from 'react-router-dom';
@@ -8,8 +9,10 @@ import {
   categoryFormSchema,
   type CategoryFormValues,
 } from '@flowledger/shared';
+import type { Category } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { colorForId } from '@/lib/palette';
 import './forms.css';
 
@@ -18,6 +21,7 @@ export function Categories() {
   const { data: categories, isLoading } = useCategories(ownerId);
   const createCategory = useCreateCategory(ownerId);
   const deleteCategory = useDeleteCategory();
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   const { register, handleSubmit, reset, formState } = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
@@ -68,7 +72,11 @@ export function Categories() {
             <div className="list-row__main">
               <div className="list-row__title">{c.name}</div>
             </div>
-            <button type="button" className="neo-button neo-button--sm" onClick={() => deleteCategory.mutate(c.id)}>
+            <button
+              type="button"
+              className="neo-button neo-button--sm"
+              onClick={() => setCategoryToDelete(c)}
+            >
               Удалить
             </button>
           </div>
@@ -83,12 +91,28 @@ export function Categories() {
             <div className="list-row__main">
               <div className="list-row__title">{c.name}</div>
             </div>
-            <button type="button" className="neo-button neo-button--sm" onClick={() => deleteCategory.mutate(c.id)}>
+            <button
+              type="button"
+              className="neo-button neo-button--sm"
+              onClick={() => setCategoryToDelete(c)}
+            >
               Удалить
             </button>
           </div>
         ))}
       </section>
+
+      {categoryToDelete && (
+        <ConfirmDialog
+          title="Удалить категорию?"
+          message={`«${categoryToDelete.name}» пропадёт из списка категорий. Уже сохранённые операции с этой категорией останутся — в них категория будет показана как «Без категории».`}
+          onCancel={() => setCategoryToDelete(null)}
+          onConfirm={() => {
+            deleteCategory.mutate(categoryToDelete.id);
+            setCategoryToDelete(null);
+          }}
+        />
+      )}
     </div>
   );
 }

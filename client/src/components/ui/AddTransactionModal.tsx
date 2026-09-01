@@ -224,7 +224,7 @@ export function AddTransactionModal({
         {isEditing && (
           <button
             type="button"
-            className="neo-button neo-button--full add-tx__delete"
+            className="neo-button neo-button--full neo-button--danger"
             onClick={handleDelete}
             disabled={deleteTransaction.isPending}
           >
