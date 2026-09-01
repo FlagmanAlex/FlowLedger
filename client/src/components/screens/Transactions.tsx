@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { useCategories, useTransactions, useWallets } from '@flowledger/shared';
+import { useCategories, useHolders, useTransactions, useWallets } from '@flowledger/shared';
 import type { Transaction, TransactionType } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -38,10 +38,28 @@ export function Transactions() {
 
   const { data: wallets } = useWallets(ownerId);
   const { data: categories } = useCategories(ownerId);
+  const { data: holders } = useHolders(ownerId);
   const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId });
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
+  const holderById = new Map((holders ?? []).map((h) => [h.id, h]));
+  const walletNameCounts = new Map<string, number>();
+  for (const w of wallets ?? []) {
+    walletNameCounts.set(w.name, (walletNameCounts.get(w.name) ?? 0) + 1);
+  }
+
+  /** У двух кошельков разных владельцев может совпадать название — тогда
+   *  подписи «Кошелёк» под операцией недостаточно, чтобы понять, о какой
+   *  именно карте речь. Добавляем владельца в скобках, только если
+   *  название неоднозначно (иначе не загромождаем обычный случай). */
+  function walletLabel(walletId: string | undefined): string {
+    const wallet = walletId ? walletById.get(walletId) : undefined;
+    if (!wallet) return '';
+    const isAmbiguous = (walletNameCounts.get(wallet.name) ?? 0) > 1;
+    const holder = wallet.holderId ? holderById.get(wallet.holderId) : undefined;
+    return isAmbiguous && holder ? `${wallet.name} (${holder.name})` : wallet.name;
+  }
 
   const filtered = (transactions ?? []).filter((t) => filter === 'all' || t.type === filter);
   const groups = groupByDate(filtered);
@@ -89,7 +107,6 @@ export function Transactions() {
               const wallet = walletById.get(t.walletId);
 
               if (t.type === 'transfer') {
-                const toWallet = t.transferToWalletId ? walletById.get(t.transferToWalletId) : undefined;
                 return (
                   <button
                     key={t.id}
@@ -101,7 +118,7 @@ export function Transactions() {
                     <div className="list-row__main">
                       <div className="list-row__title">Перевод</div>
                       <div className="list-row__subtitle">
-                        {wallet?.name ?? ''} → {toWallet?.name ?? ''}
+                        {walletLabel(t.walletId)} → {walletLabel(t.transferToWalletId)}
                       </div>
                     </div>
                     <div className="amount-neutral">
@@ -128,7 +145,7 @@ export function Transactions() {
                     <div className="list-row__title">
                       {category?.name ?? (t.categoryId ? 'Без категории' : t.description ?? 'Операция')}
                     </div>
-                    <div className="list-row__subtitle">{wallet?.name ?? ''}</div>
+                    <div className="list-row__subtitle">{walletLabel(t.walletId)}</div>
                   </div>
                   <div className={t.type === 'expense' ? 'amount-negative' : 'amount-positive'}>
                     {t.type === 'expense' ? '−' : '+'}
