@@ -44,7 +44,13 @@
 - [ ] 4. `[shared, client]` Интеграция подписки (Stripe или RevenueCat) — поле `users/{uid}.plan`
       и защита в Security Rules уже готовы, нужен сам платёжный флоу + бэкенд/webhook для смены
       `plan` (Cloud Function с Admin SDK — правила Firestore это не ограничивают, но клиент сам
-      `plan` изменить не может)
+      `plan` изменить не может). Инфраструктура деплоя клиента на VPS уже есть (см. пункт 5 ниже) —
+      для webhook-бэкенда потребуется отдельный workflow/systemd-сервис на том же сервере.
+- [x] 5. Деплой `client/` на VPS через GitHub Actions (`.github/workflows/deploy.yml`, push в
+      `main` → build → `rsync` по SSH) — выполнено 2026-09-01, детали в `memory.md` → «Деплой».
+      Заодно найдена и исправлена ловушка: прод-домен нужно вручную добавлять в Firebase Console →
+      Authentication → Settings → Authorized domains (иначе `auth/unauthorized-domain` при
+      Google-входе на проде).
 
 ## Дизайн из design_handoff_mobile_app — перенос на web
 План: `.claude/plans/web-design-system.md`. Дизайн-хендофф (`.claude/plans/design_handoff_mobile_app/`)
