@@ -61,7 +61,7 @@ function OwnerSharingCard({ user, ownerId }: { user: NonNullable<UseAuthResult['
   const removeMember = useRemoveMember(ownerId);
 
   const activeInvite = pendingInvites?.[0];
-  const inviteLink = useInviteLink(activeInvite?.id);
+  const inviteLink = useInviteLink(activeInvite?.id, import.meta.env.BASE_URL);
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {

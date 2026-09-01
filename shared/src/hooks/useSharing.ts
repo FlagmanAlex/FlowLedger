@@ -134,10 +134,15 @@ export function useLeaveSharedAccess() {
 }
 
 /** Ссылка-приглашение — строится от текущего origin, чтобы работать
- *  одинаково в dev и в проде без отдельного конфига. */
-export function useInviteLink(inviteId: string | undefined): string | undefined {
+ *  одинаково в dev и в проде без отдельного конфига. `basePath` — путь,
+ *  под которым задеплоен сам клиент (например, `/flowledger/` при
+ *  деплое на общий домен с другим проектом, см. `vite.config.ts`); без
+ *  него ссылка не совпадала бы с реальным маршрутом приложения и вела
+ *  бы на 404. */
+export function useInviteLink(inviteId: string | undefined, basePath = ''): string | undefined {
   return useMemo(() => {
     if (!inviteId || typeof window === 'undefined') return undefined;
-    return `${window.location.origin}/invite/${inviteId}`;
-  }, [inviteId]);
+    const normalizedBase = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+    return `${window.location.origin}${normalizedBase}/invite/${inviteId}`;
+  }, [inviteId, basePath]);
 }

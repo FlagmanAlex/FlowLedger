@@ -113,3 +113,11 @@
       - [ ] `[mobile]` Перенос UI общего доступа (Settings → «Общий доступ», `/invite/:id`) в
             Expo/RN — не начато, `shared`-слой (repositories/hooks) общий и мобильному не нужен
             отдельной реализации.
+      - [x] **Ссылка-приглашение вела на 404** (репортнуто 2026-09-01, после того как автодеплой
+            правил заработал и кнопка «Создать ссылку» стала рабочей). Причина: клиент задеплоен
+            на общем домене под путём `/flowledger/` (`vite.config.ts` → `base: '/flowledger/'`,
+            `basename` роутера в `App.tsx` — тот же, коммит `435fb0e`), а `useInviteLink`
+            (`shared/src/hooks/useSharing.ts`) строил ссылку от `window.location.origin` без
+            этого префикса — итоговая ссылка (`.../invite/{id}`) не совпадала ни с одним
+            маршрутом приложения. Исправлено на этой ветке: `useInviteLink` принимает `basePath`,
+            `SharingSettings.tsx` передаёт `import.meta.env.BASE_URL`.
