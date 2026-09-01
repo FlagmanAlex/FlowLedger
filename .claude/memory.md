@@ -123,11 +123,18 @@ FlowLedger — учёт доходов/расходов, продаётся ка
   `firestore.rules`/`firestore.indexes.json`/`.firebaserc`/`firebase.json` (не связан с
   `deploy.yml` — правила и клиентская статика деплоятся независимо друг от друга). Раннер
   выполняет `firebase deploy --only firestore:rules,firestore:indexes --project flowledger2` от
-  имени сервис-аккаунта GCP (JSON-ключ в секрете `FIREBASE_SERVICE_ACCOUNT`, роль
-  `Firebase Rules Admin` на проект `flowledger2`) — это отдельные креды от `VITE_FIREBASE_*`
-  (те — публичный конфиг клиента, не дают прав на деплой). Добавлен 2026-09-01 в ответ на баг:
-  правила на проде отставали от кода (см. `.claude/plans/tasks.md`), и до этого деплоить их
-  можно было только вручную (`firebase deploy` с локальной машины/сессии с прямым доступом).
+  имени сервис-аккаунта GCP (JSON-ключ в секрете `FIREBASE_SERVICE_ACCOUNT`) — это отдельные
+  креды от `VITE_FIREBASE_*` (те — публичный конфиг клиента, не дают прав на деплой). Сервис-
+  аккаунту нужны три роли на проект `flowledger2`: **Firebase Rules Admin** (сам деплой правил),
+  **Cloud Datastore Index Admin** (деплой индексов) и **Service Usage Consumer** — без последней
+  Firebase CLI падает на предварительной проверке включённости `firestore.googleapis.com` через
+  Service Usage API (`403 Permission denied to get service`), это не очевидно из документации
+  Firebase и нашлось только по логу упавшего прогона. Есть и ручной запуск (`workflow_dispatch`)
+  — полезно, когда сами `firestore.rules`/`.indexes.json` не менялись, а передеплоить нужно (paths-
+  фильтр в этом случае не сработает). Добавлен 2026-09-01 в ответ на баг: правила на проде
+  отставали от кода (см. `.claude/plans/tasks.md`) — до этого деплоить их можно было только
+  вручную (`firebase deploy` с локальной машины/сессии с прямым доступом). Первый прогон (после
+  фикса ролей) успешен — правила и индексы задеплоены на `flowledger2`.
 
 ## Известные TODO / ограничения
 - **Google Sign-In на mobile не протестирован на реальном устройстве** — код есть
