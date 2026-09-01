@@ -1,8 +1,8 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { deleteField, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import type { AuthUser, User } from '@flowledger/interfaces';
 import { getFirestoreInstance } from '../firebase/firebase.js';
 
-function userDoc(uid: string) {
+export function userDoc(uid: string) {
   return doc(getFirestoreInstance(), 'users', uid);
 }
 
@@ -27,4 +27,12 @@ export async function ensureUserDoc(authUser: AuthUser): Promise<void> {
     createdAt: new Date().toISOString(),
   };
   await setDoc(ref, user);
+}
+
+/** Переключает пользователя на базу другого владельца (принятие
+ *  приглашения) или обратно на свою (`ownerId === undefined` — выход из
+ *  общего доступа). Собственный документ, отдельного разрешения в
+ *  `firestore.rules` не требует. */
+export async function setActiveOwner(uid: string, ownerId: string | undefined): Promise<void> {
+  await updateDoc(userDoc(uid), { activeOwnerId: ownerId ?? deleteField() });
 }

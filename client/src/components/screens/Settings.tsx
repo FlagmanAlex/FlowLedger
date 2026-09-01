@@ -1,11 +1,13 @@
 import { useOutletContext } from 'react-router-dom';
-import { signOut, type UseAuthResult } from '@flowledger/shared';
+import { signOut } from '@flowledger/shared';
+import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { SharingSettings } from '@/components/ui/SharingSettings';
 import { colorForId } from '@/lib/palette';
 import './Settings.css';
 
 export function Settings() {
-  const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
+  const { user, ownerId, isSharedAccess } = useOutletContext<MainOutletContext>();
 
   return (
     <div className="page">
@@ -26,6 +28,10 @@ export function Settings() {
           </div>
         </div>
       </section>
+
+      {user && ownerId && (
+        <SharingSettings user={user} ownerId={ownerId} isSharedAccess={isSharedAccess} />
+      )}
 
       <button type="button" className="neo-button" onClick={() => signOut()}>
         Выйти

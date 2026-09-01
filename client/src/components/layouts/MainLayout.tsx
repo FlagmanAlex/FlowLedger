@@ -1,6 +1,16 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { signOut, useAuth } from '@flowledger/shared';
+import { signOut, useAuth, useOwnerId, type UseAuthResult } from '@flowledger/shared';
 import './MainLayout.css';
+
+/** Контекст, который экраны внутри MainLayout читают через useOutletContext.
+ *  ownerId — чья база сейчас активна (своя или база владельца, к которой
+ *  дан общий доступ по приглашению) — именно им, а не user.uid, нужно
+ *  скоупить все запросы к wallets/categories/transactions. */
+export interface MainOutletContext {
+  user: UseAuthResult['user'];
+  ownerId: string | undefined;
+  isSharedAccess: boolean;
+}
 
 const NAV_ITEMS = [
   { to: '/', label: 'Дашборд', end: true },
@@ -13,6 +23,7 @@ const NAV_ITEMS = [
 
 export function MainLayout() {
   const { user } = useAuth();
+  const { ownerId, isSharedAccess } = useOwnerId(user);
 
   return (
     <div className="app-shell">
@@ -47,7 +58,7 @@ export function MainLayout() {
       </aside>
 
       <main className="content">
-        <Outlet context={{ user }} />
+        <Outlet context={{ user, ownerId, isSharedAccess }} />
       </main>
     </div>
   );

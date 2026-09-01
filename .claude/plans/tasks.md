@@ -81,7 +81,17 @@
 - [ ] `[mobile, shared]` Push-уведомления (FCM)
 - [ ] `[interfaces, shared, client, mobile]` Вложения к операциям (Firebase Storage) — учесть, что
       с осени 2024 Google требует Blaze-план для доступа к Storage-бакетам (см. `memory.md`)
-- [ ] `[interfaces, shared, client, mobile]` Общий бюджет на несколько пользователей (family
-      sharing) — был в BYO-модели (приглашение по email), не перенесён при реверте на единый
-      проект; если понадобится — отдельная фича поверх `userId`-модели (см. `memory.md` →
-      «Осознанно потеряно»)
+- [x] `[interfaces, shared, client]` Общий доступ к базе по ссылке-приглашению (family sharing) —
+      реализовано 2026-09-01 без Cloud Functions (`invites`/`users/{ownerId}/members` +
+      `activeOwnerId`, детали в `memory.md`). Сборка (`tsc -b`, `vite build`) и линт (`oxlint`)
+      чистые. Не сделано:
+      - [ ] Живая проверка с реальным Firebase-логином (в песочнице сессии нет рабочего `.env`,
+            как и у прошлых visual-QA пунктов выше) — весь флоу: создание ссылки, копирование,
+            принятие вторым аккаунтом, совместная работа с данными, отзыв доступа/выход.
+      - [ ] Деплой обновлённого `firestore.rules` в реальный проект `flowledger2` (правила
+            поменяли `isOwner()` на `hasAccess()` для wallets/categories/transactions/
+            recurringTemplates и добавили `invites`/`users/{ownerId}/members` — задеплоено пока
+            только было `firestore.rules` до этой фичи, см. пункт 2 выше).
+      - [ ] `[mobile]` Перенос UI общего доступа (Settings → «Общий доступ», `/invite/:id`) в
+            Expo/RN — не начато, `shared`-слой (repositories/hooks) общий и мобильному не нужен
+            отдельной реализации.

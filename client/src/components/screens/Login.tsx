@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { signInWithGooglePopup } from '@flowledger/shared';
 import './Login.css';
 
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -13,7 +14,8 @@ export function Login() {
     setLoading(true);
     try {
       await signInWithGooglePopup();
-      navigate('/');
+      const from = (location.state as { from?: { pathname: string; search: string } } | null)?.from;
+      navigate(from ? `${from.pathname}${from.search}` : '/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-in failed');
     } finally {

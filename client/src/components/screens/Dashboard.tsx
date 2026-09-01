@@ -1,11 +1,6 @@
 import { Link, useOutletContext } from 'react-router-dom';
-import {
-  useCategories,
-  useDashboard,
-  useTransactions,
-  useWallets,
-  type UseAuthResult,
-} from '@flowledger/shared';
+import { useCategories, useDashboard, useTransactions, useWallets } from '@flowledger/shared';
+import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { CategoryBar } from '@/components/ui/CategoryBar';
 import { colorForId } from '@/lib/palette';
@@ -13,11 +8,11 @@ import { formatAmount, formatMonthLong, formatMonthShort } from '@/lib/format';
 import './Dashboard.css';
 
 export function Dashboard() {
-  const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { summary, isLoading, error } = useDashboard(user?.uid);
-  const { data: wallets } = useWallets(user?.uid);
-  const { data: categories } = useCategories(user?.uid);
-  const { data: recentTransactions } = useTransactions(user?.uid, { limit: 4 });
+  const { ownerId } = useOutletContext<MainOutletContext>();
+  const { summary, isLoading, error } = useDashboard(ownerId);
+  const { data: wallets } = useWallets(ownerId);
+  const { data: categories } = useCategories(ownerId);
+  const { data: recentTransactions } = useTransactions(ownerId, { limit: 4 });
 
   if (error) {
     return (

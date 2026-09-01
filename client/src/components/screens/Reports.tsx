@@ -9,16 +9,17 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useCategories, useDashboard, type UseAuthResult } from '@flowledger/shared';
+import { useCategories, useDashboard } from '@flowledger/shared';
+import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { CategoryBar } from '@/components/ui/CategoryBar';
 import { colorForId } from '@/lib/palette';
 import { formatMonthShort } from '@/lib/format';
 import './Reports.css';
 
 export function Reports() {
-  const { user } = useOutletContext<{ user: UseAuthResult['user'] }>();
-  const { summary, isLoading } = useDashboard(user?.uid);
-  const { data: categories } = useCategories(user?.uid);
+  const { ownerId } = useOutletContext<MainOutletContext>();
+  const { summary, isLoading } = useDashboard(ownerId);
+  const { data: categories } = useCategories(ownerId);
 
   if (isLoading || !summary) {
     return (

@@ -1,0 +1,21 @@
+.sharing-hint {
+  color: var(--text-secondary);
+  font-size: var(--fs-13);
+  line-height: 1.5;
+  margin-bottom: var(--space-3);
+}
+
+.sharing-members {
+  margin-bottom: var(--space-3);
+}
+
+.invite-link-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.invite-link-actions {
+  display: flex;
+  gap: var(--space-2);
+}

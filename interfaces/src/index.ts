@@ -4,3 +4,5 @@ export * from './common.interface.js';
 export * from './wallet.interface.js';
 export * from './category.interface.js';
 export * from './dashboard.interface.js';
+export * from './invite.interface.js';
+export * from './member.interface.js';
