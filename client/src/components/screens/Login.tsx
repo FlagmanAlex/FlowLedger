@@ -16,6 +16,14 @@ function isMobileBrowser(): boolean {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
+// Ставим перед уходом на страницу Google и снимаем после возврата — так
+// отличаем «обычное первое открытие /login» (getRedirectResult() уже
+// корректно резолвится в null) от «вернулись с Google, а результата нет»
+// (getRedirectResult() тоже резолвится в null, но это баг/сбой, а не
+// норма) — второй случай без этого флага проходил бы вообще без обратной
+// связи для пользователя.
+const REDIRECT_PENDING_KEY = 'fl_google_redirect_pending';
+
 export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,13 +37,23 @@ export function Login() {
   // резолвится в null почти мгновенно, поэтому кнопку этим не блокируем.
   useEffect(() => {
     let cancelled = false;
+    const wasPending = sessionStorage.getItem(REDIRECT_PENDING_KEY) === '1';
     completeGoogleRedirectSignIn()
       .then((user) => {
-        if (cancelled || !user) return;
-        navigate(from ? `${from.pathname}${from.search}` : '/', { replace: true });
+        if (cancelled) return;
+        sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+        if (user) {
+          navigate(from ? `${from.pathname}${from.search}` : '/', { replace: true });
+        } else if (wasPending) {
+          console.error('Google redirect sign-in: getRedirectResult() вернул null после возврата с Google');
+          setError('Не удалось завершить вход через Google — попробуйте ещё раз.');
+        }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Sign-in failed');
+        if (cancelled) return;
+        sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+        console.error('Google redirect sign-in failed', err);
+        setError(err instanceof Error ? err.message : 'Sign-in failed');
       });
     return () => {
       cancelled = true;
@@ -48,12 +66,15 @@ export function Login() {
     setSigningIn(true);
     try {
       if (isMobileBrowser()) {
+        sessionStorage.setItem(REDIRECT_PENDING_KEY, '1');
         await signInWithGoogleRedirect();
         return;
       }
       await signInWithGooglePopup();
       navigate(from ? `${from.pathname}${from.search}` : '/', { replace: true });
     } catch (err) {
+      sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+      console.error('Google sign-in failed', err);
       setError(err instanceof Error ? err.message : 'Sign-in failed');
     } finally {
       setSigningIn(false);
