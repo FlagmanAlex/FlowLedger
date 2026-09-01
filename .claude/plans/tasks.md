@@ -94,20 +94,22 @@
       - [ ] Живая проверка с реальным Firebase-логином (в песочнице сессии нет рабочего `.env`,
             как и у прошлых visual-QA пунктов выше) — весь флоу: создание ссылки, копирование,
             принятие вторым аккаунтом, совместная работа с данными, отзыв доступа/выход.
-      - [ ] **Деплой обновлённого `firestore.rules` в реальный проект `flowledger2` — подтверждённая
+      - [x] **Деплой обновлённого `firestore.rules` в реальный проект `flowledger2` — подтверждённая
             причина бага «кнопка „Создать ссылку-приглашение“ в Settings ничего не делает по клику»**
-            (репортнуто 2026-09-01). Правила поменяли `isOwner()` на `hasAccess()` для
-            wallets/categories/transactions/recurringTemplates и добавили `invites`/
-            `users/{ownerId}/members` — на проде задеплоена версия правил ещё до этой фичи (см.
-            пункт 2 выше), поэтому `invites` там не описана вообще — Firestore по умолчанию
-            запрещает и чтение, и запись, `createInvite.mutate()` в `SharingSettings.tsx` падает с
-            `permission-denied` молча (ошибка нигде не показывалась — заодно добавлено отображение
-            `createInvite.isError`/`revokeInvite.isError`, см. `SharingSettings.tsx`). Автодеплой
-            правил добавлен 2026-09-01 — `.github/workflows/deploy-firestore-rules.yml` (детали в
-            `memory.md` → «Деплой»), но ещё не сработал ни разу: ждёт, пока пользователь заведёт
-            секрет `FIREBASE_SERVICE_ACCOUNT` в GitHub и смёржит эту ветку в `main` (текущий пуш в
-            `firestore.rules` был раньше, чем появился workflow, — заново запушить/смёржить,
-            чтобы триггернуть). До первого успешного прогона кнопка на проде не заработает.
+            (репортнуто 2026-09-01, исправлено 2026-09-01). Правила поменяли `isOwner()` на
+            `hasAccess()` для wallets/categories/transactions/recurringTemplates и добавили
+            `invites`/`users/{ownerId}/members` — на проде была задеплоена версия правил ещё до этой
+            фичи, `invites` там не была описана вообще, Firestore по умолчанию запрещал и чтение, и
+            запись, `createInvite.mutate()` в `SharingSettings.tsx` падал с `permission-denied`
+            молча (заодно добавлено отображение `createInvite.isError`/`revokeInvite.isError`, см.
+            `SharingSettings.tsx`). Автодеплой правил добавлен тем же днём —
+            `.github/workflows/deploy-firestore-rules.yml` (детали в `memory.md` → «Деплой»),
+            сервис-аккаунт `github-actions-firestore-deploy@flowledger2.iam.gserviceaccount.com`
+            заведён (роли Firebase Rules Admin, Cloud Datastore Index Admin, Service Usage
+            Consumer — последняя понадобилась дополнительно, без неё падало на проверке
+            `firestore.googleapis.com` через Service Usage API), ключ в секрете
+            `FIREBASE_SERVICE_ACCOUNT`. Прогон #3 (`workflow_dispatch`) — успешен, правила и
+            индексы задеплоены на `flowledger2`. Осталась только живая проверка флоу (пункт выше).
       - [ ] `[mobile]` Перенос UI общего доступа (Settings → «Общий доступ», `/invite/:id`) в
             Expo/RN — не начато, `shared`-слой (repositories/hooks) общий и мобильному не нужен
             отдельной реализации.
