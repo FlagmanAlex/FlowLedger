@@ -102,12 +102,12 @@
             пункт 2 выше), поэтому `invites` там не описана вообще — Firestore по умолчанию
             запрещает и чтение, и запись, `createInvite.mutate()` в `SharingSettings.tsx` падает с
             `permission-denied` молча (ошибка нигде не показывалась — заодно добавлено отображение
-            `createInvite.isError`/`revokeInvite.isError`, см. `SharingSettings.tsx`, но сама кнопка
-            заработает только после деплоя правил). Деплой правил недоступен из этой GitHub-сессии
-            (нет Firebase CLI/учётных данных/доступа к серверу) — нужна сессия с прямым доступом
-            (как в примечании к пункту 5 выше), команда: `firebase deploy --only
-            firestore:rules,firestore:indexes` из корня репозитория (`.firebaserc` уже указывает на
-            `flowledger2`).
+            `createInvite.isError`/`revokeInvite.isError`, см. `SharingSettings.tsx`). Автодеплой
+            правил добавлен 2026-09-01 — `.github/workflows/deploy-firestore-rules.yml` (детали в
+            `memory.md` → «Деплой»), но ещё не сработал ни разу: ждёт, пока пользователь заведёт
+            секрет `FIREBASE_SERVICE_ACCOUNT` в GitHub и смёржит эту ветку в `main` (текущий пуш в
+            `firestore.rules` был раньше, чем появился workflow, — заново запушить/смёржить,
+            чтобы триггернуть). До первого успешного прогона кнопка на проде не заработает.
       - [ ] `[mobile]` Перенос UI общего доступа (Settings → «Общий доступ», `/invite/:id`) в
             Expo/RN — не начато, `shared`-слой (repositories/hooks) общий и мобильному не нужен
             отдельной реализации.

@@ -118,6 +118,16 @@ FlowLedger — учёт доходов/расходов, продаётся ка
 - **Бэкенд (Stripe/RevenueCat webhook) в этот деплой не входит** — деплоится только статика
   клиента; для бэкенда потребуется отдельный workflow/systemd-сервис на том же сервере (см.
   «Известные TODO» ниже).
+- **`firestore.rules`/`firestore.indexes.json` → отдельный workflow**
+  `.github/workflows/deploy-firestore-rules.yml`, триггер — push в `main` по путям
+  `firestore.rules`/`firestore.indexes.json`/`.firebaserc`/`firebase.json` (не связан с
+  `deploy.yml` — правила и клиентская статика деплоятся независимо друг от друга). Раннер
+  выполняет `firebase deploy --only firestore:rules,firestore:indexes --project flowledger2` от
+  имени сервис-аккаунта GCP (JSON-ключ в секрете `FIREBASE_SERVICE_ACCOUNT`, роль
+  `Firebase Rules Admin` на проект `flowledger2`) — это отдельные креды от `VITE_FIREBASE_*`
+  (те — публичный конфиг клиента, не дают прав на деплой). Добавлен 2026-09-01 в ответ на баг:
+  правила на проде отставали от кода (см. `.claude/plans/tasks.md`), и до этого деплоить их
+  можно было только вручную (`firebase deploy` с локальной машины/сессии с прямым доступом).
 
 ## Известные TODO / ограничения
 - **Google Sign-In на mobile не протестирован на реальном устройстве** — код есть
