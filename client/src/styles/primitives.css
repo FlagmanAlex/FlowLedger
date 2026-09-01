@@ -85,7 +85,7 @@
 .fab {
   position: fixed;
   right: var(--space-5);
-  bottom: var(--space-5);
+  bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
   width: 58px;
   height: 58px;
   border-radius: 50%;
@@ -388,6 +388,10 @@ textarea.neo-input {
   border-radius: var(--radius-xl);
   box-shadow: var(--neo-raised-lg);
   padding: var(--space-5);
+  /* Нижняя кнопка формы иначе упирается вплотную в панель браузера/жестовую
+   *  зону на телефоне — трудно попасть тапом. env() без viewport-fit=cover
+   *  в index.html резолвится в 0, но не ломается — safe. */
+  padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
