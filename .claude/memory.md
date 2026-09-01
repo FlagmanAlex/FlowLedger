@@ -103,14 +103,28 @@ FlowLedger — учёт доходов/расходов, продаётся ка
 - Конфиг Firebase — `VITE_FIREBASE_*` (`client/.env.example`), `app.json.expo.extra.firebase*` +
   `googleWebClientId` (mobile) — подробности в `docs/FIREBASE_SETUP.md`
 
+## Деплой
+- **client/ → VPS**: `.github/workflows/deploy.yml`, триггер — push в `main` (пути `client/**`,
+  `shared/**`, `interfaces/**`, `package*.json`). Сборка на GitHub-раннере (`npm run build:client`,
+  `VITE_FIREBASE_*` из GitHub Secrets), затем `rsync` по SSH на сервер (секреты `DEPLOY_HOST`/
+  `DEPLOY_USER`/`DEPLOY_SSH_KEY`/`DEPLOY_PATH`, путь на сервере — `/flowledger`). Первичная
+  настройка сервера (nginx/Caddy, TLS, сам workflow) сделана в отдельной Cowork-сессии с прямым
+  доступом к серверу — коммит `435fb0e` ушёл сразу в `main`, без PR.
+- **Прод-домен нужно вручную добавлять в Firebase Console** → Authentication → Settings →
+  Authorized domains, иначе Google-вход на проде падает с `Firebase: Error
+  (auth/unauthorized-domain)` — список разрешённых доменов не деплоится через `firebase.json`/CLI,
+  это отдельная настройка на стороне Firebase Auth, не привязанная к `rsync`-деплою клиента.
+  Столкнулись и починили 2026-09-01.
+- **Бэкенд (Stripe/RevenueCat webhook) в этот деплой не входит** — деплоится только статика
+  клиента; для бэкенда потребуется отдельный workflow/systemd-сервис на том же сервере (см.
+  «Известные TODO» ниже).
+
 ## Известные TODO / ограничения
 - **Google Sign-In на mobile не протестирован на реальном устройстве** — код есть
   (`expo-auth-session/providers/google`), нужен реальный `googleWebClientId` из Google Cloud
   Console и ручная проверка.
 - **Подписка (Stripe/RevenueCat) не интегрирована** — только поле `users/{uid}.plan` и защита в
-  Security Rules; сама оплата/webhook впереди.
-- **Деплой `firestore.rules`/`firestore.indexes.json` в реальный Firebase-проект** — не выполнено
-  ни в одной сессии (нет реального Google Cloud аккаунта).
+  Security Rules; сама оплата/webhook впереди, включая деплой самого бэкенда (см. «Деплой» выше).
 - **Security Rules unit-тесты** (`@firebase/rules-unit-testing`) для `firestore.rules` — не
   реализованы.
 - Дашборд-агрегаты считаются на клиенте из последних 500 транзакций.
