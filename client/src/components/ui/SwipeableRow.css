@@ -10,11 +10,18 @@
   right: 0;
   bottom: 0;
   border: none;
-  background: var(--negative);
   color: #fff;
   font-weight: var(--fw-bold);
   font-size: var(--fs-13);
   cursor: pointer;
+}
+
+.swipeable-row__action--danger {
+  background: var(--negative);
+}
+
+.swipeable-row__action--positive {
+  background: var(--positive);
 }
 
 .swipeable-row__surface {

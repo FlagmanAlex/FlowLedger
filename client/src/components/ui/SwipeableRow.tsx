@@ -7,19 +7,22 @@ const OPEN_THRESHOLD = ACTION_WIDTH / 2;
 interface SwipeableRowProps {
   children: ReactNode;
   actionLabel: string;
+  actionVariant?: 'danger' | 'positive';
   onAction: () => void;
   onClick?: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-/** Свайп влево открывает кнопку-действие под строкой (как архивирование
- *  в списке кошельков на телефоне) — открытое/закрытое состояние строки
- *  контролирует родитель, чтобы свайп одной строки закрывал остальные.
- *  Pointer Events вместо Touch — один код для тача, мыши и стилуса. */
+/** Свайп влево открывает кнопку-действие под строкой (архивирование или
+ *  восстановление в списке кошельков на телефоне) — открытое/закрытое
+ *  состояние строки контролирует родитель, чтобы свайп одной строки
+ *  закрывал остальные. Pointer Events вместо Touch — один код для тача,
+ *  мыши и стилуса. */
 export function SwipeableRow({
   children,
   actionLabel,
+  actionVariant = 'danger',
   onAction,
   onClick,
   open,
@@ -71,7 +74,7 @@ export function SwipeableRow({
     <div className="list-row swipeable-row">
       <button
         type="button"
-        className="swipeable-row__action"
+        className={`swipeable-row__action swipeable-row__action--${actionVariant}`}
         style={{ width: ACTION_WIDTH }}
         onClick={() => {
           onAction();

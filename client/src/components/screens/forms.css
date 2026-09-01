@@ -19,6 +19,14 @@
   white-space: nowrap;
 }
 
+.wallets-archived {
+  margin-top: var(--space-2);
+}
+
+.wallets-archived .swipeable-row__surface > * {
+  opacity: 0.55;
+}
+
 @media (max-width: 480px) {
   .create-form {
     flex-direction: column;
