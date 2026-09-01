@@ -33,7 +33,10 @@ const router = createBrowserRouter([
       },
     ],
   },
-]);
+], {
+  // BASE_URL берётся из vite.config.ts (base: '/flowledger/'), чтобы не дублировать путь
+  basename: import.meta.env.BASE_URL,
+});
 
 function App() {
   return (

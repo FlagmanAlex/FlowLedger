@@ -4,6 +4,8 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Деплой на /flowledger/ на общем домене (общий сервер с другим проектом)
+  base: '/flowledger/',
   plugins: [react()],
   resolve: {
     alias: {
