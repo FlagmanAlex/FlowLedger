@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { useCategories, useDashboard, useTransactions, useWallets } from '@flowledger/shared';
 import type { MonthlyTrendPoint } from '@flowledger/interfaces';
@@ -8,12 +9,42 @@ import { colorForId } from '@/lib/palette';
 import { formatAmount, formatMonthLong, formatMonthShort } from '@/lib/format';
 import './Dashboard.css';
 
+const MAIN_CURRENCY = 'RUB';
+
+function monthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthDateRange(month: string): { dateFrom: string; dateTo: string } {
+  const [year, m] = month.split('-').map(Number);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const from = new Date(year, m - 1, 1);
+  const to = new Date(year, m, 1);
+  return {
+    dateFrom: `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`,
+    dateTo: `${to.getFullYear()}-${pad(to.getMonth() + 1)}-${pad(to.getDate())}`,
+  };
+}
+
+/** Последние 12 месяцев, включая текущий — диапазон выбора в пикере. */
+function recentMonthOptions(): { value: string; label: string }[] {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return { value: monthKey(d), label: formatMonthLong(d) };
+  });
+}
+
 export function Dashboard() {
   const { ownerId } = useOutletContext<MainOutletContext>();
   const { summary, isLoading, error } = useDashboard(ownerId);
   const { data: wallets } = useWallets(ownerId);
   const { data: categories } = useCategories(ownerId);
   const { data: recentTransactions } = useTransactions(ownerId, { limit: 4 });
+
+  const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date()));
+  const { dateFrom, dateTo } = monthDateRange(selectedMonth);
+  const { data: monthTransactions } = useTransactions(ownerId, { dateFrom, dateTo, limit: 500 });
 
   if (error) {
     return (
@@ -37,17 +68,6 @@ export function Dashboard() {
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
 
-  // Кошельки бывают разных валют — итоги и проценты считаем каждой валюте
-  // отдельно, а не смешивая их в одно бессмысленное число.
-  const expenseTotalByCurrency = new Map<string, number>();
-  for (const c of summary.expenseByCategory) {
-    expenseTotalByCurrency.set(c.currency, (expenseTotalByCurrency.get(c.currency) ?? 0) + c.total);
-  }
-  const incomeTotalByCurrency = new Map<string, number>();
-  for (const c of summary.incomeByCategory) {
-    incomeTotalByCurrency.set(c.currency, (incomeTotalByCurrency.get(c.currency) ?? 0) + c.total);
-  }
-
   const trendByCurrency = new Map<string, MonthlyTrendPoint[]>();
   for (const p of summary.monthlyTrend) {
     const arr = trendByCurrency.get(p.currency) ?? [];
@@ -66,6 +86,34 @@ export function Dashboard() {
         .filter((p) => p.month === lastMonth)
         .map((p) => ({ currency: p.currency, month: p.month, delta: p.income - p.expense }))
     : [];
+
+  // Основная валюта — рубли: категории и итоги за выбранный месяц считаем
+  // только по RUB-кошелькам, не смешивая с другими валютами.
+  const rubWalletIds = new Set(
+    (wallets ?? []).filter((w) => w.currency === MAIN_CURRENCY).map((w) => w.id),
+  );
+  const monthExpenseByCategory = new Map<string, number>();
+  const monthIncomeByCategory = new Map<string, number>();
+  let monthExpenseTotal = 0;
+  let monthIncomeTotal = 0;
+  for (const t of monthTransactions ?? []) {
+    if (!rubWalletIds.has(t.walletId)) continue;
+    if (t.type === 'expense' && t.categoryId) {
+      const amount = Math.abs(t.amount);
+      monthExpenseByCategory.set(t.categoryId, (monthExpenseByCategory.get(t.categoryId) ?? 0) + amount);
+      monthExpenseTotal += amount;
+    } else if (t.type === 'income' && t.categoryId) {
+      const amount = Math.abs(t.amount);
+      monthIncomeByCategory.set(t.categoryId, (monthIncomeByCategory.get(t.categoryId) ?? 0) + amount);
+      monthIncomeTotal += amount;
+    }
+  }
+  const toSortedTotals = (map: Map<string, number>) =>
+    Array.from(map.entries())
+      .map(([categoryId, total]) => ({ categoryId, total }))
+      .sort((a, b) => b.total - a.total);
+  const monthExpenseList = toSortedTotals(monthExpenseByCategory);
+  const monthIncomeList = toSortedTotals(monthIncomeByCategory);
 
   return (
     <div className="page">
@@ -122,51 +170,88 @@ export function Dashboard() {
         </div>
       )}
 
-      {summary.expenseByCategory.length > 0 && (
-        <section className="neo-card">
-          <h2 className="section-title">Расходы по категориям</h2>
-          <div className="category-list">
-            {summary.expenseByCategory.map((c) => (
-              <Link
-                key={`${c.categoryId}-${c.currency}`}
-                to={`/transactions?categoryId=${c.categoryId}`}
-                className="card-link"
-              >
-                <CategoryBar
-                  name={c.categoryName}
-                  amount={c.total}
-                  currency={c.currency}
-                  percent={(c.total / (expenseTotalByCurrency.get(c.currency) || 1)) * 100}
-                  color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
-                />
-              </Link>
+      <section className="neo-card">
+        <div className="dashboard-month-summary__header">
+          <h2 className="section-title" style={{ margin: 0 }}>
+            За месяц
+          </h2>
+          <select
+            className="neo-input dashboard-month-select"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+          >
+            {recentMonthOptions().map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
             ))}
+          </select>
+        </div>
+        <div className="dashboard-month-totals">
+          <div className="dashboard-month-totals__item">
+            <span className="dashboard-month-totals__label">Доходы</span>
+            <span className="dashboard-month-totals__value amount-positive">
+              +{formatAmount(monthIncomeTotal)} {MAIN_CURRENCY}
+            </span>
           </div>
-        </section>
-      )}
+          <div className="dashboard-month-totals__item">
+            <span className="dashboard-month-totals__label">Расходы</span>
+            <span className="dashboard-month-totals__value amount-negative">
+              −{formatAmount(monthExpenseTotal)} {MAIN_CURRENCY}
+            </span>
+          </div>
+        </div>
+      </section>
 
-      {summary.incomeByCategory.length > 0 && (
-        <section className="neo-card">
-          <h2 className="section-title">Доходы по категориям</h2>
+      <section className="neo-card">
+        <h2 className="section-title">Расходы по категориям</h2>
+        {monthExpenseList.length === 0 ? (
+          <p className="state-message">Нет данных за этот месяц</p>
+        ) : (
           <div className="category-list">
-            {summary.incomeByCategory.map((c) => (
+            {monthExpenseList.map((c) => (
               <Link
-                key={`${c.categoryId}-${c.currency}`}
+                key={c.categoryId}
                 to={`/transactions?categoryId=${c.categoryId}`}
                 className="card-link"
               >
                 <CategoryBar
-                  name={c.categoryName}
+                  name={categoryById.get(c.categoryId)?.name ?? 'Без категории'}
                   amount={c.total}
-                  currency={c.currency}
-                  percent={(c.total / (incomeTotalByCurrency.get(c.currency) || 1)) * 100}
+                  currency={MAIN_CURRENCY}
+                  percent={(c.total / (monthExpenseTotal || 1)) * 100}
                   color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
                 />
               </Link>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
+
+      <section className="neo-card">
+        <h2 className="section-title">Доходы по категориям</h2>
+        {monthIncomeList.length === 0 ? (
+          <p className="state-message">Нет данных за этот месяц</p>
+        ) : (
+          <div className="category-list">
+            {monthIncomeList.map((c) => (
+              <Link
+                key={c.categoryId}
+                to={`/transactions?categoryId=${c.categoryId}`}
+                className="card-link"
+              >
+                <CategoryBar
+                  name={categoryById.get(c.categoryId)?.name ?? 'Без категории'}
+                  amount={c.total}
+                  currency={MAIN_CURRENCY}
+                  percent={(c.total / (monthIncomeTotal || 1)) * 100}
+                  color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
+                />
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
       {trendBlocks.map(({ currency, trendPoints, trendMax }) => (
         <section key={currency} className="neo-card">

@@ -16,6 +16,11 @@ export interface TransactionFilters {
   walletId?: string;
   categoryId?: string;
   type?: Transaction['type'];
+  /** Включительно, формат YYYY-MM-DD — фильтр по месяцу и т.п. Использует
+   *  тот же составной индекс userId+date, что и сортировка, новый не нужен. */
+  dateFrom?: string;
+  /** Исключительно (< dateTo), формат YYYY-MM-DD. */
+  dateTo?: string;
   limit?: number;
 }
 
@@ -27,6 +32,8 @@ export async function listTransactions(
   if (filters.walletId) clauses.push(where('walletId', '==', filters.walletId));
   if (filters.categoryId) clauses.push(where('categoryId', '==', filters.categoryId));
   if (filters.type) clauses.push(where('type', '==', filters.type));
+  if (filters.dateFrom) clauses.push(where('date', '>=', filters.dateFrom));
+  if (filters.dateTo) clauses.push(where('date', '<', filters.dateTo));
 
   const q = query(
     transactionsCollection(),

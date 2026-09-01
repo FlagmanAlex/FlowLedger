@@ -88,6 +88,42 @@
   color: var(--text);
 }
 
+.dashboard-month-summary__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.dashboard-month-select {
+  width: auto;
+  height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--fs-13);
+}
+
+.dashboard-month-totals {
+  display: flex;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.dashboard-month-totals__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard-month-totals__label {
+  font-size: var(--fs-12);
+  color: var(--text-secondary);
+}
+
+.dashboard-month-totals__value {
+  font-size: var(--fs-19);
+  font-weight: var(--fw-heavy);
+}
+
 .category-list {
   display: flex;
   flex-direction: column;
