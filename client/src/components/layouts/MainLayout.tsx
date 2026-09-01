@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { signOut, useAuth, useOwnerId, type UseAuthResult } from '@flowledger/shared';
 import './MainLayout.css';
@@ -24,10 +25,34 @@ const NAV_ITEMS = [
 export function MainLayout() {
   const { user } = useAuth();
   const { ownerId, isSharedAccess } = useOwnerId(user);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <div className="topbar">
+        <div className="sidebar__brand">
+          <div className="sidebar__badge">FL</div>
+          <span className="sidebar__title">FlowLedger</span>
+        </div>
+
+        <button
+          type="button"
+          className="topbar__menu-toggle"
+          aria-label="Открыть меню"
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      </div>
+
+      {isMenuOpen && (
+        <div className="sidebar-overlay" onClick={() => setIsMenuOpen(false)} />
+      )}
+
+      <aside className={`sidebar${isMenuOpen ? ' is-open' : ''}`}>
         <div className="sidebar__brand">
           <div className="sidebar__badge">FL</div>
           <span className="sidebar__title">FlowLedger</span>
@@ -40,6 +65,7 @@ export function MainLayout() {
               to={item.to}
               end={item.end}
               className={({ isActive }) => `sidebar__link${isActive ? ' is-active' : ''}`}
+              onClick={() => setIsMenuOpen(false)}
             >
               {item.label}
             </NavLink>
