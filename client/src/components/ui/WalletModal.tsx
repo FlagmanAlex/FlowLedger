@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  useCreateCurrency,
   useCreateHolder,
   useCreateWallet,
   useCurrencies,
@@ -24,6 +25,7 @@ export function WalletModal({ ownerId, wallet, onClose }: WalletModalProps) {
   const createWallet = useCreateWallet(ownerId);
   const updateWallet = useUpdateWallet();
   const createHolder = useCreateHolder(ownerId);
+  const createCurrency = useCreateCurrency(ownerId);
   const isEditing = Boolean(wallet);
 
   const [name, setName] = useState(wallet?.name ?? '');
@@ -33,6 +35,8 @@ export function WalletModal({ ownerId, wallet, onClose }: WalletModalProps) {
   const [color, setColor] = useState<string | undefined>(wallet?.color);
   const [showAddHolder, setShowAddHolder] = useState(false);
   const [newHolderName, setNewHolderName] = useState('');
+  const [showAddCurrency, setShowAddCurrency] = useState(false);
+  const [newCurrencyCode, setNewCurrencyCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const effectiveCurrency = currency || currencies?.[0]?.code || '';
@@ -48,6 +52,20 @@ export function WalletModal({ ownerId, wallet, onClose }: WalletModalProps) {
     } catch (err) {
       console.error('Не удалось добавить владельца', err);
       setError(err instanceof Error ? err.message : 'Не удалось добавить владельца');
+    }
+  }
+
+  async function handleAddCurrency() {
+    const trimmed = newCurrencyCode.trim().toUpperCase();
+    if (!trimmed || !ownerId) return;
+    try {
+      await createCurrency.mutateAsync({ code: trimmed, name: trimmed });
+      setCurrency(trimmed);
+      setNewCurrencyCode('');
+      setShowAddCurrency(false);
+    } catch (err) {
+      console.error('Не удалось добавить валюту', err);
+      setError(err instanceof Error ? err.message : 'Не удалось добавить валюту');
     }
   }
 
@@ -106,17 +124,47 @@ export function WalletModal({ ownerId, wallet, onClose }: WalletModalProps) {
 
         <div className="wallet-modal__section">
           <h3 className="section-title">Валюта</h3>
-          <select
-            className="neo-input"
-            value={effectiveCurrency}
-            onChange={(e) => setCurrency(e.target.value)}
-          >
+          <div className="wallet-modal__chip-row">
             {(currencies ?? []).map((c) => (
-              <option key={c.id} value={c.code}>
+              <button
+                key={c.id}
+                type="button"
+                className={`chip${effectiveCurrency === c.code ? ' is-selected' : ''}`}
+                onClick={() => setCurrency(c.code)}
+              >
                 {c.code}
-              </option>
+              </button>
             ))}
-          </select>
+            {!showAddCurrency && (
+              <button
+                type="button"
+                className="chip wallet-modal__add-chip"
+                onClick={() => setShowAddCurrency(true)}
+              >
+                + Добавить
+              </button>
+            )}
+          </div>
+          {showAddCurrency && (
+            <div className="wallet-modal__add-holder">
+              <input
+                className="neo-input"
+                type="text"
+                placeholder="Например, EUR"
+                value={newCurrencyCode}
+                onChange={(e) => setNewCurrencyCode(e.target.value)}
+                autoFocus
+              />
+              <button
+                type="button"
+                className="neo-button neo-button--sm"
+                onClick={handleAddCurrency}
+                disabled={createCurrency.isPending}
+              >
+                Добавить
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="wallet-modal__section">

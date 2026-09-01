@@ -26,3 +26,15 @@ export async function listCurrencies(userId: string): Promise<Currency[]> {
   if (currencies.length > 0) return currencies;
   return seedDefaultCurrencies(userId);
 }
+
+export async function createCurrency(
+  userId: string,
+  input: Omit<Currency, 'id' | 'userId' | 'createdAt'>,
+): Promise<string> {
+  const ref = await addDoc(currenciesCollection(), {
+    ...input,
+    userId,
+    createdAt: new Date().toISOString(),
+  } as Currency);
+  return ref.id;
+}
