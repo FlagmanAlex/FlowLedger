@@ -3,9 +3,12 @@ interface IconCircleProps {
   color: string;
   size?: number;
   fontSize?: number;
+  /** Явная иконка (эмодзи) — если задана, показывается целиком вместо
+   *  первой буквы label (нельзя резать эмодзи через charAt). */
+  icon?: string;
 }
 
-export function IconCircle({ label, color, size = 36, fontSize = 14 }: IconCircleProps) {
+export function IconCircle({ label, color, size = 36, fontSize = 14, icon }: IconCircleProps) {
   return (
     <div
       className="icon-circle"
@@ -16,7 +19,7 @@ export function IconCircle({ label, color, size = 36, fontSize = 14 }: IconCircl
         ['--circle-color' as string]: color,
       }}
     >
-      {label.charAt(0).toUpperCase()}
+      {icon || label.charAt(0).toUpperCase()}
     </div>
   );
 }

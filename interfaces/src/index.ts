@@ -3,6 +3,7 @@ export * from './user.interface.js';
 export * from './common.interface.js';
 export * from './wallet.interface.js';
 export * from './currency.interface.js';
+export * from './holder.interface.js';
 export * from './category.interface.js';
 export * from './dashboard.interface.js';
 export * from './invite.interface.js';

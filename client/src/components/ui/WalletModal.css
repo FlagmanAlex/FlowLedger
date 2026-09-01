@@ -1,0 +1,68 @@
+.wallet-modal__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.wallet-modal__chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.wallet-modal__add-chip {
+  color: var(--text-secondary);
+  border-style: dashed;
+}
+
+.wallet-modal__add-holder {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.wallet-modal__add-holder .neo-input {
+  flex: 1;
+}
+
+.wallet-modal__icon-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-2);
+}
+
+.wallet-modal__icon-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--neo-raised-sm);
+  font-size: var(--fs-22);
+  cursor: pointer;
+}
+
+.wallet-modal__icon-cell.is-selected {
+  box-shadow: var(--neo-inset);
+  border-color: var(--accent);
+}
+
+.wallet-modal__color-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.wallet-modal__color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  box-shadow: var(--neo-raised-sm);
+}
+
+.wallet-modal__color-swatch.is-selected {
+  border-color: var(--text);
+}

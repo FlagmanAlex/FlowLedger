@@ -1,21 +1,11 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useOutletContext } from 'react-router-dom';
-import {
-  useArchiveWallet,
-  useCreateWallet,
-  useCurrencies,
-  useUpdateWallet,
-  useWallets,
-  walletFormSchema,
-  type WalletFormValues,
-} from '@flowledger/shared';
+import { useArchiveWallet, useHolders, useUpdateWallet, useWallets } from '@flowledger/shared';
 import type { Wallet } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
-import { EditWalletModal } from '@/components/ui/EditWalletModal';
+import { WalletModal } from '@/components/ui/WalletModal';
 import { TransferModal } from '@/components/ui/TransferModal';
 import { colorForId } from '@/lib/palette';
 import { formatAmount } from '@/lib/format';
@@ -24,118 +14,117 @@ import './forms.css';
 export function Wallets() {
   const { user, ownerId } = useOutletContext<MainOutletContext>();
   const { data: wallets, isLoading } = useWallets(ownerId);
-  const { data: currencies } = useCurrencies(ownerId);
-  const createWallet = useCreateWallet(ownerId);
+  const { data: holders } = useHolders(ownerId);
   const archiveWallet = useArchiveWallet();
   const updateWallet = useUpdateWallet();
   const [openWalletId, setOpenWalletId] = useState<string | null>(null);
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
+  const [showCreateWallet, setShowCreateWallet] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
 
   const activeWallets = wallets?.filter((w) => !w.archived) ?? [];
   const archivedWallets = wallets?.filter((w) => w.archived) ?? [];
+  const hasHolderAssignments = activeWallets.some((w) => w.holderId);
 
-  const { register, handleSubmit, reset, formState } = useForm<WalletFormValues>({
-    resolver: zodResolver(walletFormSchema),
-    defaultValues: { name: '', currency: 'RUB' },
-  });
-
-  async function onSubmit(values: WalletFormValues) {
-    if (!ownerId) return;
-    await createWallet.mutateAsync(values);
-    reset();
+  function walletRow(w: Wallet, actionLabel: string, actionVariant: 'danger' | 'positive', onAction: () => void) {
+    return (
+      <SwipeableRow
+        key={w.id}
+        actionLabel={actionLabel}
+        actionVariant={actionVariant}
+        onAction={onAction}
+        onClick={() => setEditingWallet(w)}
+        open={openWalletId === w.id}
+        onOpenChange={(open) => setOpenWalletId(open ? w.id : null)}
+      >
+        <IconCircle label={w.name} icon={w.icon} color={w.color ?? colorForId(w.id)} size={36} />
+        <div className="list-row__main">
+          <div className="list-row__title">{w.name}</div>
+          <div className="list-row__subtitle">{w.currency}</div>
+        </div>
+        <span className="wallet-row__amount">
+          {formatAmount(w.balance)} {w.currency}
+        </span>
+      </SwipeableRow>
+    );
   }
 
   return (
     <div className="page">
       <div className="page__header">
         <h1 className="page__title">Кошельки</h1>
-        {activeWallets.length >= 2 && (
-          <button type="button" className="neo-button neo-button--sm" onClick={() => setShowTransfer(true)}>
-            Перевод
+        <div className="wallets-header-actions">
+          {activeWallets.length >= 2 && (
+            <button type="button" className="neo-button neo-button--sm" onClick={() => setShowTransfer(true)}>
+              Перевод
+            </button>
+          )}
+          <button
+            type="button"
+            className="neo-button neo-button--sm neo-button--accent"
+            onClick={() => setShowCreateWallet(true)}
+          >
+            + Кошелёк
           </button>
-        )}
+        </div>
       </div>
 
-      <section className="neo-card">
-        <form className="create-form" onSubmit={handleSubmit(onSubmit)}>
-          <div className="field">
-            <input className="neo-input" placeholder="Название" {...register('name')} />
-            {formState.errors.name && (
-              <span className="field__error">{formState.errors.name.message}</span>
-            )}
-          </div>
-          <div className="field">
-            <select className="neo-input" {...register('currency')}>
-              {(currencies ?? []).map((c) => (
-                <option key={c.id} value={c.code}>
-                  {c.code}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button type="submit" className="neo-button neo-button--accent" disabled={createWallet.isPending}>
-            Добавить
-          </button>
-        </form>
-      </section>
+      {isLoading && (
+        <section className="neo-card">
+          <p className="state-message">Загрузка...</p>
+        </section>
+      )}
 
-      <section className="neo-card">
-        {isLoading && <p className="state-message">Загрузка...</p>}
-        {activeWallets.map((w) => (
-          <SwipeableRow
-            key={w.id}
-            actionLabel="Архив"
-            actionVariant="danger"
-            onAction={() => archiveWallet.mutate(w.id)}
-            onClick={() => setEditingWallet(w)}
-            open={openWalletId === w.id}
-            onOpenChange={(open) => setOpenWalletId(open ? w.id : null)}
-          >
-            <IconCircle label={w.name} color={w.color ?? colorForId(w.id)} size={36} />
-            <div className="list-row__main">
-              <div className="list-row__title">{w.name}</div>
-              <div className="list-row__subtitle">{w.currency}</div>
-            </div>
-            <span className="wallet-row__amount">
-              {formatAmount(w.balance)} {w.currency}
-            </span>
-          </SwipeableRow>
-        ))}
-        {!isLoading && activeWallets.length === 0 && (
+      {!isLoading && activeWallets.length === 0 && (
+        <section className="neo-card">
           <p className="state-message">Кошельков пока нет</p>
-        )}
-      </section>
+        </section>
+      )}
+
+      {!isLoading && !hasHolderAssignments && activeWallets.length > 0 && (
+        <section className="neo-card">
+          {activeWallets.map((w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id)))}
+        </section>
+      )}
+
+      {!isLoading &&
+        hasHolderAssignments &&
+        (holders ?? []).map((h) => {
+          const holderWallets = activeWallets.filter((w) => w.holderId === h.id);
+          if (holderWallets.length === 0) return null;
+          return (
+            <section key={h.id} className="neo-card">
+              <h2 className="section-title">{h.name}</h2>
+              {holderWallets.map((w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id)))}
+            </section>
+          );
+        })}
+
+      {!isLoading && hasHolderAssignments && activeWallets.some((w) => !w.holderId) && (
+        <section className="neo-card">
+          <h2 className="section-title">Без владельца</h2>
+          {activeWallets
+            .filter((w) => !w.holderId)
+            .map((w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id)))}
+        </section>
+      )}
 
       {archivedWallets.length > 0 && (
         <section className="neo-card wallets-archived">
           <h2 className="section-title">В архиве</h2>
-          {archivedWallets.map((w) => (
-            <SwipeableRow
-              key={w.id}
-              actionLabel="Вернуть"
-              actionVariant="positive"
-              onAction={() => updateWallet.mutate({ id: w.id, patch: { archived: false } })}
-              onClick={() => setEditingWallet(w)}
-              open={openWalletId === w.id}
-              onOpenChange={(open) => setOpenWalletId(open ? w.id : null)}
-            >
-              <IconCircle label={w.name} color={w.color ?? colorForId(w.id)} size={36} />
-              <div className="list-row__main">
-                <div className="list-row__title">{w.name}</div>
-                <div className="list-row__subtitle">{w.currency}</div>
-              </div>
-              <span className="wallet-row__amount">
-                {formatAmount(w.balance)} {w.currency}
-              </span>
-            </SwipeableRow>
-          ))}
+          {archivedWallets.map((w) =>
+            walletRow(w, 'Вернуть', 'positive', () =>
+              updateWallet.mutate({ id: w.id, patch: { archived: false } }),
+            ),
+          )}
         </section>
       )}
 
       {editingWallet && (
-        <EditWalletModal wallet={editingWallet} onClose={() => setEditingWallet(null)} />
+        <WalletModal ownerId={ownerId} wallet={editingWallet} onClose={() => setEditingWallet(null)} />
       )}
+
+      {showCreateWallet && <WalletModal ownerId={ownerId} onClose={() => setShowCreateWallet(false)} />}
 
       {showTransfer && (
         <TransferModal
