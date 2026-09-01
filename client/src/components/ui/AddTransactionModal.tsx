@@ -62,36 +62,48 @@ export function AddTransactionModal({
       return;
     }
 
-    if (transaction) {
-      await updateTransaction.mutateAsync({
-        id: transaction.id,
-        patch: {
+    setError(null);
+    try {
+      if (transaction) {
+        await updateTransaction.mutateAsync({
+          id: transaction.id,
+          patch: {
+            walletId,
+            categoryId,
+            type,
+            amount: numericAmount,
+            description: description || undefined,
+            date,
+          },
+        });
+      } else {
+        await createTransaction.mutateAsync({
           walletId,
           categoryId,
           type,
           amount: numericAmount,
           description: description || undefined,
           date,
-        },
-      });
-    } else {
-      await createTransaction.mutateAsync({
-        walletId,
-        categoryId,
-        type,
-        amount: numericAmount,
-        description: description || undefined,
-        date,
-        createdBy: user.uid,
-      });
+          createdBy: user.uid,
+        });
+      }
+      onClose();
+    } catch (err) {
+      console.error('Не удалось сохранить операцию', err);
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить операцию');
     }
-    onClose();
   }
 
   async function handleDelete() {
     if (!transaction) return;
-    await deleteTransaction.mutateAsync(transaction.id);
-    onClose();
+    setError(null);
+    try {
+      await deleteTransaction.mutateAsync(transaction.id);
+      onClose();
+    } catch (err) {
+      console.error('Не удалось удалить операцию', err);
+      setError(err instanceof Error ? err.message : 'Не удалось удалить операцию');
+    }
   }
 
   const isSaving = createTransaction.isPending || updateTransaction.isPending;
@@ -206,7 +218,7 @@ export function AddTransactionModal({
           onClick={handleSave}
           disabled={isSaving}
         >
-          Сохранить
+          {isSaving ? 'Сохранение…' : 'Сохранить'}
         </button>
 
         {isEditing && (
@@ -216,7 +228,7 @@ export function AddTransactionModal({
             onClick={handleDelete}
             disabled={deleteTransaction.isPending}
           >
-            Удалить операцию
+            {deleteTransaction.isPending ? 'Удаление…' : 'Удалить операцию'}
           </button>
         )}
       </div>
