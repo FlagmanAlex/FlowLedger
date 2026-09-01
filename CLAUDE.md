@@ -34,6 +34,13 @@
     build:client` из корня перед `workflow_dispatch`, и после деплоя проверять `conclusion` самого
     workflow run (`actions_get`/`actions_list`), а не только факт, что он был запущен (`queued` —
     не значит успех).
+  - Деплой клиента (`deploy.yml`) и деплой правил Firestore (`deploy-firestore-rules.yml`) —
+    **раздельные** workflow, `workflow_dispatch` одного не запускает другой. Если в коммите
+    менялся `firestore.rules` (например, новая коллекция) — обязательно дёргать
+    `deploy-firestore-rules.yml` тем же `ref` отдельно, помимо `deploy.yml`. Забыть это —
+    типичная причина "Missing or insufficient permissions" в проде: клиент уже знает про новую
+    коллекцию, а Firestore ещё живёт по старым правилам без разрешения на неё. Один раз именно
+    так и вышло — задеплоил только клиент, забыл про правила.
 
 ## Контекст проекта — с чего начинать
 
