@@ -33,6 +33,7 @@ export function AddTransactionModal({
   const [walletId, setWalletId] = useState<string | undefined>(wallets[0]?.id);
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [description, setDescription] = useState('');
+  const [date, setDate] = useState(today());
   const [error, setError] = useState<string | null>(null);
 
   const categoriesForType = categories.filter((c) => c.type === type);
@@ -57,7 +58,7 @@ export function AddTransactionModal({
       type,
       amount: numericAmount,
       description: description || undefined,
-      date: today(),
+      date,
       createdBy: user.uid,
     });
     onClose();
@@ -148,6 +149,16 @@ export function AddTransactionModal({
             placeholder="Описание (необязательно)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <input
+            className="neo-input"
+            type="date"
+            max={today()}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
           />
         </div>
 
