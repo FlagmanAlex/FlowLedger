@@ -62,7 +62,6 @@ export function MainLayout() {
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.end}
               className={({ isActive }) => `sidebar__link${isActive ? ' is-active' : ''}`}
               onClick={() => setIsMenuOpen(false)}
             >
