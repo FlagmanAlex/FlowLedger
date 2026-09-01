@@ -32,6 +32,7 @@ export function Transactions() {
   const [filter, setFilter] = useState<TxFilter>('all');
   const [showAdd, setShowAdd] = useState(false);
   const [addType, setAddType] = useState<TransactionType>('expense');
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const { data: wallets } = useWallets(ownerId);
   const { data: categories } = useCategories(ownerId);
@@ -86,7 +87,12 @@ export function Transactions() {
               const category = t.categoryId ? categoryById.get(t.categoryId) : undefined;
               const wallet = walletById.get(t.walletId);
               return (
-                <div key={t.id} className="list-row">
+                <button
+                  key={t.id}
+                  type="button"
+                  className="list-row list-row--clickable"
+                  onClick={() => setEditingTx(t)}
+                >
                   <IconCircle
                     label={category?.name ?? '·'}
                     color={category ? category.color ?? colorForId(category.id) : colorForId(t.walletId)}
@@ -102,7 +108,7 @@ export function Transactions() {
                     {t.type === 'expense' ? '−' : '+'}
                     {formatAmount(Math.abs(t.amount))} ₽
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -121,6 +127,18 @@ export function Transactions() {
           categories={categories ?? []}
           defaultType={addType}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+
+      {editingTx && (
+        <AddTransactionModal
+          user={user}
+          ownerId={ownerId}
+          wallets={wallets ?? []}
+          categories={categories ?? []}
+          defaultType={editingTx.type === 'expense' ? 'expense' : 'income'}
+          transaction={editingTx}
+          onClose={() => setEditingTx(null)}
         />
       )}
     </div>

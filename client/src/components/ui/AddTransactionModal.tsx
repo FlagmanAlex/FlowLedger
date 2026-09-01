@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useCreateTransaction, type UseAuthResult } from '@flowledger/shared';
-import type { Category, TransactionType, Wallet } from '@flowledger/interfaces';
+import {
+  useCreateTransaction,
+  useDeleteTransaction,
+  useUpdateTransaction,
+  type UseAuthResult,
+} from '@flowledger/shared';
+import type { Category, Transaction, TransactionType, Wallet } from '@flowledger/interfaces';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { colorForId } from '@/lib/palette';
 import './AddTransactionModal.css';
@@ -11,6 +16,7 @@ interface AddTransactionModalProps {
   wallets: Wallet[];
   categories: Category[];
   defaultType: TransactionType;
+  transaction?: Transaction;
   onClose: () => void;
 }
 
@@ -24,16 +30,20 @@ export function AddTransactionModal({
   wallets,
   categories,
   defaultType,
+  transaction,
   onClose,
 }: AddTransactionModalProps) {
   const createTransaction = useCreateTransaction(ownerId);
+  const updateTransaction = useUpdateTransaction();
+  const deleteTransaction = useDeleteTransaction();
+  const isEditing = Boolean(transaction);
 
-  const [type, setType] = useState<TransactionType>(defaultType);
-  const [amount, setAmount] = useState('');
-  const [walletId, setWalletId] = useState<string | undefined>(wallets[0]?.id);
-  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(today());
+  const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType);
+  const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
+  const [walletId, setWalletId] = useState<string | undefined>(transaction?.walletId ?? wallets[0]?.id);
+  const [categoryId, setCategoryId] = useState<string | undefined>(transaction?.categoryId);
+  const [description, setDescription] = useState(transaction?.description ?? '');
+  const [date, setDate] = useState(transaction?.date ?? today());
   const [error, setError] = useState<string | null>(null);
 
   const categoriesForType = categories.filter((c) => c.type === type);
@@ -52,17 +62,39 @@ export function AddTransactionModal({
       return;
     }
 
-    await createTransaction.mutateAsync({
-      walletId,
-      categoryId,
-      type,
-      amount: numericAmount,
-      description: description || undefined,
-      date,
-      createdBy: user.uid,
-    });
+    if (transaction) {
+      await updateTransaction.mutateAsync({
+        id: transaction.id,
+        patch: {
+          walletId,
+          categoryId,
+          type,
+          amount: numericAmount,
+          description: description || undefined,
+          date,
+        },
+      });
+    } else {
+      await createTransaction.mutateAsync({
+        walletId,
+        categoryId,
+        type,
+        amount: numericAmount,
+        description: description || undefined,
+        date,
+        createdBy: user.uid,
+      });
+    }
     onClose();
   }
+
+  async function handleDelete() {
+    if (!transaction) return;
+    await deleteTransaction.mutateAsync(transaction.id);
+    onClose();
+  }
+
+  const isSaving = createTransaction.isPending || updateTransaction.isPending;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -71,7 +103,7 @@ export function AddTransactionModal({
           <button type="button" className="neo-button neo-button--icon" onClick={onClose}>
             ✕
           </button>
-          <span className="modal-sheet__title">Новая операция</span>
+          <span className="modal-sheet__title">{isEditing ? 'Операция' : 'Новая операция'}</span>
           <span style={{ width: 36 }} />
         </div>
 
@@ -172,10 +204,21 @@ export function AddTransactionModal({
           type="button"
           className="neo-button neo-button--accent neo-button--full"
           onClick={handleSave}
-          disabled={createTransaction.isPending}
+          disabled={isSaving}
         >
           Сохранить
         </button>
+
+        {isEditing && (
+          <button
+            type="button"
+            className="neo-button neo-button--full add-tx__delete"
+            onClick={handleDelete}
+            disabled={deleteTransaction.isPending}
+          >
+            Удалить операцию
+          </button>
+        )}
       </div>
     </div>
   );

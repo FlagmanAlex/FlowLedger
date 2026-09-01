@@ -253,6 +253,20 @@ textarea.neo-input {
   padding: var(--space-3) 0;
 }
 
+.list-row--clickable {
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.list-row--clickable:active {
+  opacity: 0.7;
+}
+
 .list-row + .list-row {
   border-top: 1px solid rgba(245, 246, 250, 0.06);
 }
