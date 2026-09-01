@@ -9,6 +9,7 @@ on:
       - '.firebaserc'
       - 'firebase.json'
       - '.github/workflows/deploy-firestore-rules.yml'
+  workflow_dispatch: {}
 
 jobs:
   deploy:
