@@ -14,6 +14,13 @@
   font-weight: var(--fw-bold);
   font-size: var(--fs-13);
   cursor: pointer;
+  /* Своя (не токен-неоморфная) тень — --neo-inset подобран под цвет
+   *  --surface, на насыщенной заливке действия смотрелся бы грязно. */
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.swipeable-row__action:active {
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.4);
 }
 
 .swipeable-row__action--danger {

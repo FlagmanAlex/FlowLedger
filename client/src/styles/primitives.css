@@ -62,8 +62,8 @@
 }
 
 .neo-button--icon {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border-radius: var(--radius-sm);
   font-size: var(--fs-16);

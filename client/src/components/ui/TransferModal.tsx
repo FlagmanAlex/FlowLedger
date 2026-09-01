@@ -116,7 +116,7 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
             ✕
           </button>
           <span className="modal-sheet__title">{isEditing ? 'Перевод' : 'Новый перевод'}</span>
-          <span style={{ width: 36 }} />
+          <span style={{ width: 44 }} />
         </div>
 
         <div className="transfer-modal__amount">

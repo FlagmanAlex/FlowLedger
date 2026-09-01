@@ -119,7 +119,7 @@ export function AddTransactionModal({
             ✕
           </button>
           <span className="modal-sheet__title">{isEditing ? 'Операция' : 'Новая операция'}</span>
-          <span style={{ width: 36 }} />
+          <span style={{ width: 44 }} />
         </div>
 
         <div className="segmented add-tx__type">
