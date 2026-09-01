@@ -1,0 +1,30 @@
+.list-row.swipeable-row {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+}
+
+.swipeable-row__action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border: none;
+  background: var(--negative);
+  color: #fff;
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-13);
+  cursor: pointer;
+}
+
+.swipeable-row__surface {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) 0;
+  background: var(--surface);
+  position: relative;
+  touch-action: pan-y;
+  cursor: pointer;
+}

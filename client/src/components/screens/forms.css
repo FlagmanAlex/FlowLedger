@@ -12,12 +12,6 @@
   flex-shrink: 0;
 }
 
-.wallet-row__balance {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
 .wallet-row__amount {
   font-size: var(--fs-14);
   font-weight: var(--fw-bold);
