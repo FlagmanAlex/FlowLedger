@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, Link } from 'react-router-dom';
 import { signOut, useAuth, useOwnerId, type UseAuthResult } from '@flowledger/shared';
 import './MainLayout.css';
 
@@ -14,7 +14,6 @@ export interface MainOutletContext {
 }
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Дашборд', end: true },
   { to: '/transactions', label: 'Журнал' },
   { to: '/wallets', label: 'Кошельки' },
   { to: '/categories', label: 'Категории' },
@@ -30,10 +29,10 @@ export function MainLayout() {
   return (
     <div className="app-shell">
       <div className="topbar">
-        <div className="sidebar__brand">
+        <Link to="/" className="sidebar__brand" onClick={() => setIsMenuOpen(false)}>
           <div className="sidebar__badge">FL</div>
           <span className="sidebar__title">FlowLedger</span>
-        </div>
+        </Link>
 
         <button
           type="button"
@@ -53,10 +52,10 @@ export function MainLayout() {
       )}
 
       <aside className={`sidebar${isMenuOpen ? ' is-open' : ''}`}>
-        <div className="sidebar__brand">
+        <Link to="/" className="sidebar__brand" onClick={() => setIsMenuOpen(false)}>
           <div className="sidebar__badge">FL</div>
           <span className="sidebar__title">FlowLedger</span>
-        </div>
+        </Link>
 
         <nav className="sidebar__nav">
           {NAV_ITEMS.map((item) => (

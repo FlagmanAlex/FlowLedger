@@ -10,6 +10,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useCategories, useDashboard } from '@flowledger/shared';
+import type { MonthlyTrendPoint } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { CategoryBar } from '@/components/ui/CategoryBar';
 import { colorForId } from '@/lib/palette';
@@ -30,19 +31,45 @@ export function Reports() {
   }
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
-  const expenseTotal = summary.expenseByCategory.reduce((sum, c) => sum + c.total, 0);
-  const incomeTotal = summary.incomeByCategory.reduce((sum, c) => sum + c.total, 0);
-  const chartData = summary.monthlyTrend.map((p) => ({ ...p, label: formatMonthShort(p.month) }));
+
+  // Кошельки бывают разных валют — итоги для процентов и график тренда
+  // считаем на каждую валюту отдельно, а не смешивая их в одно число.
+  const expenseTotalByCurrency = new Map<string, number>();
+  for (const c of summary.expenseByCategory) {
+    expenseTotalByCurrency.set(c.currency, (expenseTotalByCurrency.get(c.currency) ?? 0) + c.total);
+  }
+  const incomeTotalByCurrency = new Map<string, number>();
+  for (const c of summary.incomeByCategory) {
+    incomeTotalByCurrency.set(c.currency, (incomeTotalByCurrency.get(c.currency) ?? 0) + c.total);
+  }
+
+  const trendByCurrency = new Map<string, MonthlyTrendPoint[]>();
+  for (const p of summary.monthlyTrend) {
+    const arr = trendByCurrency.get(p.currency) ?? [];
+    arr.push(p);
+    trendByCurrency.set(p.currency, arr);
+  }
+  const trendBlocks = Array.from(trendByCurrency.entries()).map(([currency, points]) => ({
+    currency,
+    chartData: points.map((p) => ({ ...p, label: formatMonthShort(p.month) })),
+  }));
 
   return (
     <div className="page">
       <h1 className="page__title">Отчёты</h1>
 
-      <section className="neo-card">
-        <h2 className="section-title">Тренд по месяцам</h2>
-        {chartData.length === 0 ? (
+      {trendBlocks.length === 0 && (
+        <section className="neo-card">
+          <h2 className="section-title">Тренд по месяцам</h2>
           <p className="state-message">Пока нет данных</p>
-        ) : (
+        </section>
+      )}
+
+      {trendBlocks.map(({ currency, chartData }) => (
+        <section key={currency} className="neo-card">
+          <h2 className="section-title">
+            Тренд по месяцам{trendBlocks.length > 1 ? ` — ${currency}` : ''}
+          </h2>
           <div className="reports-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -76,8 +103,8 @@ export function Reports() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        )}
-      </section>
+        </section>
+      ))}
 
       <div className="reports-columns">
         <section className="neo-card">
@@ -86,10 +113,11 @@ export function Reports() {
             {summary.expenseByCategory.length === 0 && <p className="state-message">Нет данных</p>}
             {summary.expenseByCategory.map((c) => (
               <CategoryBar
-                key={c.categoryId}
+                key={`${c.categoryId}-${c.currency}`}
                 name={c.categoryName}
                 amount={c.total}
-                percent={expenseTotal ? (c.total / expenseTotal) * 100 : 0}
+                currency={c.currency}
+                percent={(c.total / (expenseTotalByCurrency.get(c.currency) || 1)) * 100}
                 color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
               />
             ))}
@@ -102,10 +130,11 @@ export function Reports() {
             {summary.incomeByCategory.length === 0 && <p className="state-message">Нет данных</p>}
             {summary.incomeByCategory.map((c) => (
               <CategoryBar
-                key={c.categoryId}
+                key={`${c.categoryId}-${c.currency}`}
                 name={c.categoryName}
                 amount={c.total}
-                percent={incomeTotal ? (c.total / incomeTotal) * 100 : 0}
+                currency={c.currency}
+                percent={(c.total / (incomeTotalByCurrency.get(c.currency) || 1)) * 100}
                 color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
               />
             ))}

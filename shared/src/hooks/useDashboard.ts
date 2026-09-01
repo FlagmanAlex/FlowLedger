@@ -10,6 +10,10 @@ import { listCategories } from '../repositories/categories.repo.js';
  * wallet balances and a bounded transaction window — avoids a server round
  * trip for the common case; a Cloud Function-backed aggregate can replace
  * this later if the transaction volume outgrows client-side aggregation.
+ *
+ * Кошельки бывают разных валют — суммировать их в одно число бессмысленно
+ * без курсов конвертации (не входит в эту функцию), поэтому баланс,
+ * категории и тренд по месяцам считаются отдельно на каждую валюту.
  */
 export function useDashboard(userId: string | undefined) {
   const enabled = Boolean(userId);
@@ -34,39 +38,56 @@ export function useDashboard(userId: string | undefined) {
     if (!walletsQuery.data || !categoriesQuery.data || !transactionsQuery.data) return undefined;
 
     const categoryNameById = new Map(categoriesQuery.data.map((c) => [c.id, c.name]));
+    const walletById = new Map(walletsQuery.data.map((w) => [w.id, w]));
+
+    const balanceByCurrency = new Map<string, number>();
+    for (const w of walletsQuery.data) {
+      balanceByCurrency.set(w.currency, (balanceByCurrency.get(w.currency) ?? 0) + w.balance);
+    }
+
     const expenseByCategory = new Map<string, number>();
     const incomeByCategory = new Map<string, number>();
-    const monthlyTrend = new Map<string, { income: number; expense: number }>();
+    const monthlyTrend = new Map<string, { month: string; currency: string; income: number; expense: number }>();
 
     for (const tx of transactionsQuery.data) {
+      const currency = walletById.get(tx.walletId)?.currency ?? '';
       const month = tx.date.slice(0, 7);
-      const point = monthlyTrend.get(month) ?? { income: 0, expense: 0 };
+      const trendKey = `${month}|${currency}`;
+      const point = monthlyTrend.get(trendKey) ?? { month, currency, income: 0, expense: 0 };
 
       if (tx.type === 'expense' && tx.categoryId) {
-        expenseByCategory.set(tx.categoryId, (expenseByCategory.get(tx.categoryId) ?? 0) + Math.abs(tx.amount));
+        const key = `${tx.categoryId}|${currency}`;
+        expenseByCategory.set(key, (expenseByCategory.get(key) ?? 0) + Math.abs(tx.amount));
         point.expense += Math.abs(tx.amount);
       } else if (tx.type === 'income' && tx.categoryId) {
-        incomeByCategory.set(tx.categoryId, (incomeByCategory.get(tx.categoryId) ?? 0) + Math.abs(tx.amount));
+        const key = `${tx.categoryId}|${currency}`;
+        incomeByCategory.set(key, (incomeByCategory.get(key) ?? 0) + Math.abs(tx.amount));
         point.income += Math.abs(tx.amount);
       }
-      monthlyTrend.set(month, point);
+      monthlyTrend.set(trendKey, point);
     }
 
     const toCategoryTotals = (map: Map<string, number>): CategoryTotal[] =>
       Array.from(map.entries())
-        .map(([categoryId, total]) => ({
-          categoryId,
-          categoryName: categoryNameById.get(categoryId) ?? 'Без категории',
-          total,
-        }))
+        .map(([key, total]) => {
+          const [categoryId, currency] = key.split('|');
+          return {
+            categoryId,
+            currency,
+            categoryName: categoryNameById.get(categoryId) ?? 'Без категории',
+            total,
+          };
+        })
         .sort((a, b) => b.total - a.total);
 
-    const trend: MonthlyTrendPoint[] = Array.from(monthlyTrend.entries())
-      .map(([month, v]) => ({ month, ...v }))
-      .sort((a, b) => a.month.localeCompare(b.month));
+    const trend: MonthlyTrendPoint[] = Array.from(monthlyTrend.values()).sort(
+      (a, b) => a.month.localeCompare(b.month) || a.currency.localeCompare(b.currency),
+    );
 
     return {
-      totalBalance: walletsQuery.data.reduce((sum, w) => sum + w.balance, 0),
+      totalBalanceByCurrency: Array.from(balanceByCurrency.entries())
+        .map(([currency, total]) => ({ currency, total }))
+        .sort((a, b) => b.total - a.total),
       wallets: walletsQuery.data.map((w) => ({
         walletId: w.id,
         walletName: w.name,

@@ -26,6 +26,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-2);
+  text-decoration: none;
 }
 
 .sidebar__badge {

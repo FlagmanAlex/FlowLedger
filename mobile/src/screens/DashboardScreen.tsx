@@ -16,7 +16,11 @@ export function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Общий баланс: {summary.totalBalance.toFixed(2)}</Text>
+      {summary.totalBalanceByCurrency.map((b) => (
+        <Text key={b.currency} style={styles.title}>
+          Общий баланс: {b.total.toFixed(2)} {b.currency}
+        </Text>
+      ))}
       <FlatList
         data={summary.wallets}
         keyExtractor={(w) => w.walletId}

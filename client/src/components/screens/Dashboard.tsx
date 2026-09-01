@@ -1,5 +1,6 @@
 import { Link, useOutletContext } from 'react-router-dom';
 import { useCategories, useDashboard, useTransactions, useWallets } from '@flowledger/shared';
+import type { MonthlyTrendPoint } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { CategoryBar } from '@/components/ui/CategoryBar';
@@ -36,13 +37,35 @@ export function Dashboard() {
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
 
-  const expenseTotal = summary.expenseByCategory.reduce((sum, c) => sum + c.total, 0);
-  const incomeTotal = summary.incomeByCategory.reduce((sum, c) => sum + c.total, 0);
+  // Кошельки бывают разных валют — итоги и проценты считаем каждой валюте
+  // отдельно, а не смешивая их в одно бессмысленное число.
+  const expenseTotalByCurrency = new Map<string, number>();
+  for (const c of summary.expenseByCategory) {
+    expenseTotalByCurrency.set(c.currency, (expenseTotalByCurrency.get(c.currency) ?? 0) + c.total);
+  }
+  const incomeTotalByCurrency = new Map<string, number>();
+  for (const c of summary.incomeByCategory) {
+    incomeTotalByCurrency.set(c.currency, (incomeTotalByCurrency.get(c.currency) ?? 0) + c.total);
+  }
 
-  const trendPoints = summary.monthlyTrend.slice(-6);
-  const trendMax = Math.max(1, ...trendPoints.flatMap((p) => [p.income, p.expense]));
-  const lastPoint = summary.monthlyTrend.at(-1);
-  const delta = lastPoint ? lastPoint.income - lastPoint.expense : undefined;
+  const trendByCurrency = new Map<string, MonthlyTrendPoint[]>();
+  for (const p of summary.monthlyTrend) {
+    const arr = trendByCurrency.get(p.currency) ?? [];
+    arr.push(p);
+    trendByCurrency.set(p.currency, arr);
+  }
+  const trendBlocks = Array.from(trendByCurrency.entries()).map(([currency, points]) => {
+    const trendPoints = points.slice(-6);
+    const trendMax = Math.max(1, ...trendPoints.flatMap((p) => [p.income, p.expense]));
+    return { currency, trendPoints, trendMax };
+  });
+
+  const lastMonth = summary.monthlyTrend.at(-1)?.month;
+  const deltas = lastMonth
+    ? summary.monthlyTrend
+        .filter((p) => p.month === lastMonth)
+        .map((p) => ({ currency: p.currency, month: p.month, delta: p.income - p.expense }))
+    : [];
 
   return (
     <div className="page">
@@ -53,13 +76,31 @@ export function Dashboard() {
 
       <section className="neo-card">
         <div className="balance-label">Общий баланс</div>
-        <div className="balance-value">
-          {formatAmount(summary.totalBalance)} ₽
-        </div>
-        {delta !== undefined && (
-          <div className={`delta-pill${delta < 0 ? ' delta-pill--negative' : ''}`}>
-            {delta >= 0 ? '+' : '−'}
-            {formatAmount(Math.abs(delta))} ₽ за {formatMonthShort(lastPoint!.month)}
+        {summary.totalBalanceByCurrency.length <= 1 ? (
+          <div className="balance-value">
+            {formatAmount(summary.totalBalanceByCurrency[0]?.total ?? 0)}{' '}
+            {summary.totalBalanceByCurrency[0]?.currency ?? ''}
+          </div>
+        ) : (
+          <div className="balance-value-list">
+            {summary.totalBalanceByCurrency.map((b) => (
+              <div key={b.currency} className="balance-value-list__item">
+                {formatAmount(b.total)} {b.currency}
+              </div>
+            ))}
+          </div>
+        )}
+        {deltas.length > 0 && (
+          <div className="delta-pill-row">
+            {deltas.map((d) => (
+              <div
+                key={d.currency}
+                className={`delta-pill${d.delta < 0 ? ' delta-pill--negative' : ''}`}
+              >
+                {d.delta >= 0 ? '+' : '−'}
+                {formatAmount(Math.abs(d.delta))} {d.currency} за {formatMonthShort(d.month)}
+              </div>
+            ))}
           </div>
         )}
       </section>
@@ -81,20 +122,21 @@ export function Dashboard() {
         </div>
       )}
 
-      {expenseTotal > 0 && (
+      {summary.expenseByCategory.length > 0 && (
         <section className="neo-card">
           <h2 className="section-title">Расходы по категориям</h2>
           <div className="category-list">
             {summary.expenseByCategory.map((c) => (
               <Link
-                key={c.categoryId}
+                key={`${c.categoryId}-${c.currency}`}
                 to={`/transactions?categoryId=${c.categoryId}`}
                 className="card-link"
               >
                 <CategoryBar
                   name={c.categoryName}
                   amount={c.total}
-                  percent={(c.total / expenseTotal) * 100}
+                  currency={c.currency}
+                  percent={(c.total / (expenseTotalByCurrency.get(c.currency) || 1)) * 100}
                   color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
                 />
               </Link>
@@ -103,20 +145,21 @@ export function Dashboard() {
         </section>
       )}
 
-      {incomeTotal > 0 && (
+      {summary.incomeByCategory.length > 0 && (
         <section className="neo-card">
           <h2 className="section-title">Доходы по категориям</h2>
           <div className="category-list">
             {summary.incomeByCategory.map((c) => (
               <Link
-                key={c.categoryId}
+                key={`${c.categoryId}-${c.currency}`}
                 to={`/transactions?categoryId=${c.categoryId}`}
                 className="card-link"
               >
                 <CategoryBar
                   name={c.categoryName}
                   amount={c.total}
-                  percent={(c.total / incomeTotal) * 100}
+                  currency={c.currency}
+                  percent={(c.total / (incomeTotalByCurrency.get(c.currency) || 1)) * 100}
                   color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
                 />
               </Link>
@@ -125,9 +168,11 @@ export function Dashboard() {
         </section>
       )}
 
-      {trendPoints.length > 0 && (
-        <section className="neo-card">
-          <h2 className="section-title">Тренд по месяцам</h2>
+      {trendBlocks.map(({ currency, trendPoints, trendMax }) => (
+        <section key={currency} className="neo-card">
+          <h2 className="section-title">
+            Тренд по месяцам{trendBlocks.length > 1 ? ` — ${currency}` : ''}
+          </h2>
           <div className="trend-bars">
             {trendPoints.map((p) => (
               <div key={p.month} className="trend-month">
@@ -146,7 +191,7 @@ export function Dashboard() {
             ))}
           </div>
         </section>
-      )}
+      ))}
 
       <section className="neo-card">
         <div className="recent-header">

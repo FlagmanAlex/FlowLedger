@@ -22,9 +22,28 @@
   color: var(--text);
 }
 
+.balance-value-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.balance-value-list__item {
+  font-size: var(--fs-26);
+  font-weight: var(--fw-heavy);
+  color: var(--text);
+}
+
+.delta-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
 .delta-pill {
   display: inline-flex;
-  margin-top: var(--space-3);
   padding: 4px 10px;
   border-radius: var(--radius-round);
   font-size: var(--fs-12);
