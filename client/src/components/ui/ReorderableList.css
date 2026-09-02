@@ -1,0 +1,14 @@
+.reorderable-row {
+  position: relative;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reorderable-row.is-dragging {
+  z-index: 10;
+  touch-action: none;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--neo-raised-lg);
+}

@@ -10,5 +10,8 @@ export interface Wallet {
   icon?: string;
   color?: string;
   archived: boolean;
+  /** Порядок в списке — задаётся вручную перетаскиванием (long-press),
+   *  без него сортировка идёт по createdAt (порядок создания). */
+  sortOrder?: number;
   createdAt: string;
 }

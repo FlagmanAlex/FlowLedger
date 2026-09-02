@@ -6,6 +6,7 @@ import {
   useCategories,
   useCreateCategory,
   useDeleteCategory,
+  useUpdateCategory,
   categoryFormSchema,
   type CategoryFormValues,
 } from '@flowledger/shared';
@@ -13,15 +14,30 @@ import type { Category } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { ReorderableList } from '@/components/ui/ReorderableList';
 import { colorForId } from '@/lib/palette';
+import { nextSortOrder } from '@/lib/reorder';
 import './forms.css';
 
 export function Categories() {
   const { ownerId } = useOutletContext<MainOutletContext>();
   const { data: categories, isLoading } = useCategories(ownerId);
   const createCategory = useCreateCategory(ownerId);
+  const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+
+  const expenseCategories = categories?.filter((c) => c.type === 'expense') ?? [];
+  const incomeCategories = categories?.filter((c) => c.type === 'income') ?? [];
+
+  /** Долгое нажатие на категорию (см. ReorderableList) меняет её sortOrder —
+   *  порядок дальше используется везде, где выводится список категорий (этот
+   *  экран, сетка категорий в форме операции). */
+  function handleReorder(list: Category[]) {
+    return (id: string, beforeId: string | null, afterId: string | null) => {
+      updateCategory.mutate({ id, patch: { sortOrder: nextSortOrder(list, beforeId, afterId) } });
+    };
+  }
 
   const { register, handleSubmit, reset, formState } = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
@@ -66,40 +82,50 @@ export function Categories() {
 
       <section className="neo-card">
         <h2 className="section-title">Расходы</h2>
-        {categories?.filter((c) => c.type === 'expense').map((c) => (
-          <div key={c.id} className="list-row">
-            <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={36} />
-            <div className="list-row__main">
-              <div className="list-row__title">{c.name}</div>
+        <ReorderableList
+          items={expenseCategories}
+          getId={(c) => c.id}
+          onReorder={handleReorder(expenseCategories)}
+          renderItem={(c) => (
+            <div className="list-row">
+              <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={36} />
+              <div className="list-row__main">
+                <div className="list-row__title">{c.name}</div>
+              </div>
+              <button
+                type="button"
+                className="neo-button neo-button--sm"
+                onClick={() => setCategoryToDelete(c)}
+              >
+                Удалить
+              </button>
             </div>
-            <button
-              type="button"
-              className="neo-button neo-button--sm"
-              onClick={() => setCategoryToDelete(c)}
-            >
-              Удалить
-            </button>
-          </div>
-        ))}
+          )}
+        />
       </section>
 
       <section className="neo-card">
         <h2 className="section-title">Доходы</h2>
-        {categories?.filter((c) => c.type === 'income').map((c) => (
-          <div key={c.id} className="list-row">
-            <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={36} />
-            <div className="list-row__main">
-              <div className="list-row__title">{c.name}</div>
+        <ReorderableList
+          items={incomeCategories}
+          getId={(c) => c.id}
+          onReorder={handleReorder(incomeCategories)}
+          renderItem={(c) => (
+            <div className="list-row">
+              <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={36} />
+              <div className="list-row__main">
+                <div className="list-row__title">{c.name}</div>
+              </div>
+              <button
+                type="button"
+                className="neo-button neo-button--sm"
+                onClick={() => setCategoryToDelete(c)}
+              >
+                Удалить
+              </button>
             </div>
-            <button
-              type="button"
-              className="neo-button neo-button--sm"
-              onClick={() => setCategoryToDelete(c)}
-            >
-              Удалить
-            </button>
-          </div>
-        ))}
+          )}
+        />
       </section>
 
       {categoryToDelete && (

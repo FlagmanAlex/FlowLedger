@@ -5,10 +5,12 @@ import type { Wallet } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
+import { ReorderableList } from '@/components/ui/ReorderableList';
 import { WalletModal } from '@/components/ui/WalletModal';
 import { TransferModal } from '@/components/ui/TransferModal';
 import { colorForId } from '@/lib/palette';
 import { formatAmount } from '@/lib/format';
+import { nextSortOrder } from '@/lib/reorder';
 import './forms.css';
 
 export function Wallets() {
@@ -29,7 +31,6 @@ export function Wallets() {
   function walletRow(w: Wallet, actionLabel: string, actionVariant: 'danger' | 'positive', onAction: () => void) {
     return (
       <SwipeableRow
-        key={w.id}
         actionLabel={actionLabel}
         actionVariant={actionVariant}
         onAction={onAction}
@@ -47,6 +48,13 @@ export function Wallets() {
         </span>
       </SwipeableRow>
     );
+  }
+
+  /** Долгое нажатие на кошелёк в активном списке (см. ReorderableList) меняет
+   *  его sortOrder — порядок дальше используется везде, где выводится
+   *  список кошельков (этот экран, WalletPicker в операциях/переводах). */
+  function handleReorder(id: string, beforeId: string | null, afterId: string | null) {
+    updateWallet.mutate({ id, patch: { sortOrder: nextSortOrder(activeWallets, beforeId, afterId) } });
   }
 
   return (
@@ -83,7 +91,12 @@ export function Wallets() {
 
       {!isLoading && !hasHolderAssignments && activeWallets.length > 0 && (
         <section className="neo-card">
-          {activeWallets.map((w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id)))}
+          <ReorderableList
+            items={activeWallets}
+            getId={(w) => w.id}
+            onReorder={handleReorder}
+            renderItem={(w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id))}
+          />
         </section>
       )}
 
@@ -95,7 +108,12 @@ export function Wallets() {
           return (
             <section key={h.id} className="neo-card">
               <h2 className="section-title">{h.name}</h2>
-              {holderWallets.map((w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id)))}
+              <ReorderableList
+                items={holderWallets}
+                getId={(w) => w.id}
+                onReorder={handleReorder}
+                renderItem={(w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id))}
+              />
             </section>
           );
         })}
@@ -103,20 +121,25 @@ export function Wallets() {
       {!isLoading && hasHolderAssignments && activeWallets.some((w) => !w.holderId) && (
         <section className="neo-card">
           <h2 className="section-title">Без владельца</h2>
-          {activeWallets
-            .filter((w) => !w.holderId)
-            .map((w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id)))}
+          <ReorderableList
+            items={activeWallets.filter((w) => !w.holderId)}
+            getId={(w) => w.id}
+            onReorder={handleReorder}
+            renderItem={(w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id))}
+          />
         </section>
       )}
 
       {archivedWallets.length > 0 && (
         <section className="neo-card wallets-archived">
           <h2 className="section-title">В архиве</h2>
-          {archivedWallets.map((w) =>
-            walletRow(w, 'Вернуть', 'positive', () =>
-              updateWallet.mutate({ id: w.id, patch: { archived: false } }),
-            ),
-          )}
+          {archivedWallets.map((w) => (
+            <div key={w.id}>
+              {walletRow(w, 'Вернуть', 'positive', () =>
+                updateWallet.mutate({ id: w.id, patch: { archived: false } }),
+              )}
+            </div>
+          ))}
         </section>
       )}
 
