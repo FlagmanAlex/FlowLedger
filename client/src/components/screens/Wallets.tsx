@@ -5,7 +5,7 @@ import type { Wallet } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
-import { ReorderableList } from '@/components/ui/ReorderableList';
+import { ReorderableList, type DragHandleProps } from '@/components/ui/ReorderableList';
 import { WalletModal } from '@/components/ui/WalletModal';
 import { TransferModal } from '@/components/ui/TransferModal';
 import { colorForId } from '@/lib/palette';
@@ -28,7 +28,13 @@ export function Wallets() {
   const archivedWallets = wallets?.filter((w) => w.archived) ?? [];
   const hasHolderAssignments = activeWallets.some((w) => w.holderId);
 
-  function walletRow(w: Wallet, actionLabel: string, actionVariant: 'danger' | 'positive', onAction: () => void) {
+  function walletRow(
+    w: Wallet,
+    actionLabel: string,
+    actionVariant: 'danger' | 'positive',
+    onAction: () => void,
+    handleProps?: DragHandleProps,
+  ) {
     return (
       <SwipeableRow
         actionLabel={actionLabel}
@@ -46,6 +52,11 @@ export function Wallets() {
         <span className="wallet-row__amount">
           {formatAmount(w.balance)} {w.currency}
         </span>
+        {handleProps && (
+          <span className="reorder-handle" {...handleProps}>
+            ⠿
+          </span>
+        )}
       </SwipeableRow>
     );
   }
@@ -95,7 +106,7 @@ export function Wallets() {
             items={activeWallets}
             getId={(w) => w.id}
             onReorder={handleReorder}
-            renderItem={(w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id))}
+            renderItem={(w, _dragging, handleProps) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id), handleProps)}
           />
         </section>
       )}
@@ -112,7 +123,7 @@ export function Wallets() {
                 items={holderWallets}
                 getId={(w) => w.id}
                 onReorder={handleReorder}
-                renderItem={(w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id))}
+                renderItem={(w, _dragging, handleProps) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id), handleProps)}
               />
             </section>
           );
@@ -125,7 +136,7 @@ export function Wallets() {
             items={activeWallets.filter((w) => !w.holderId)}
             getId={(w) => w.id}
             onReorder={handleReorder}
-            renderItem={(w) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id))}
+            renderItem={(w, _dragging, handleProps) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id), handleProps)}
           />
         </section>
       )}

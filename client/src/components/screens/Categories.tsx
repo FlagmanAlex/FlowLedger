@@ -86,7 +86,7 @@ export function Categories() {
           items={expenseCategories}
           getId={(c) => c.id}
           onReorder={handleReorder(expenseCategories)}
-          renderItem={(c) => (
+          renderItem={(c, _dragging, handleProps) => (
             <div className="list-row">
               <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={36} />
               <div className="list-row__main">
@@ -99,6 +99,9 @@ export function Categories() {
               >
                 Удалить
               </button>
+              <span className="reorder-handle" {...handleProps}>
+                ⠿
+              </span>
             </div>
           )}
         />
@@ -110,7 +113,7 @@ export function Categories() {
           items={incomeCategories}
           getId={(c) => c.id}
           onReorder={handleReorder(incomeCategories)}
-          renderItem={(c) => (
+          renderItem={(c, _dragging, handleProps) => (
             <div className="list-row">
               <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={36} />
               <div className="list-row__main">
@@ -123,6 +126,9 @@ export function Categories() {
               >
                 Удалить
               </button>
+              <span className="reorder-handle" {...handleProps}>
+                ⠿
+              </span>
             </div>
           )}
         />

@@ -1,29 +1,59 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import './ReorderableList.css';
 
 const LONG_PRESS_MS = 450;
 const CANCEL_MOVE_PX = 6;
+
+export interface DragHandleProps {
+  onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => void;
+  onClick: (e: ReactMouseEvent<HTMLElement>) => void;
+  style: CSSProperties;
+}
 
 interface ReorderableListProps<T> {
   items: T[];
   getId: (item: T) => string;
   /** beforeId/afterId — id соседей на новом месте (выше/ниже), null на краю списка. */
   onReorder: (id: string, beforeId: string | null, afterId: string | null) => void;
-  renderItem: (item: T, dragging: boolean) => ReactNode;
+  /** handleProps — навесить на маленькую ручку (⠿) внутри строки, см. .reorder-handle. */
+  renderItem: (item: T, dragging: boolean, handleProps: DragHandleProps) => ReactNode;
 }
 
+const HANDLE_STYLE: CSSProperties = { touchAction: 'none' };
+
 /** Список с сортировкой long-press + перетаскиванием (как переупорядочивание
- *  строк в мобильных приложениях): держим строку ~450мс без движения — она
+ *  строк в мобильных приложениях): держим ручку ~450мс без движения — она
  *  «поднимается», дальше двигаем палец вверх/вниз, соседи расступаются.
- *  Короткий тап или горизонтальный свайп (для SwipeableRow внутри) через
- *  порог в 450мс не проходят — таймер отменяется при первом же заметном
- *  движении, обычные жесты строки продолжают работать как раньше.
  *
- *  Move/up во время самого перетаскивания слушаем на window, а не через
- *  пропсы React-элемента строки: после первого же свайпа соседей позиция
- *  строки в DOM меняется, и полагаться на то, что именно её узел окажется
- *  под пальцем к моменту отпускания, нельзя — окно всегда получает событие
- *  независимо от того, что сейчас под курсором. */
+ *  Долгое нажатие берётся с отдельной ручки внутри строки, а не со всей
+ *  строки целиком — не просто стилистический выбор. У строки задан
+ *  touch-action: pan-y (чтобы страница скроллилась через список), а
+ *  touch-action фактически фиксируется браузером на начало жеста —
+ *  переключить его на none в середине уже начавшегося на строке касания
+ *  ненадёжно на реальных устройствах. У ручки touch-action: none стоит
+ *  всегда, с самого начала — гонки нет, а скролл через остальную часть
+ *  строки продолжает работать.
+ *
+ *  Move/up во время активного перетаскивания слушаем на window, а не через
+ *  пропсы React-элемента: после первого же свайпа соседей DOM-позиция
+ *  строки меняется, и полагаться, что именно её узел окажется под пальцем
+ *  к моменту отпускания, нельзя. Пропагацию pointerdown/move/up с ручки
+ *  наверх НЕ останавливаем (важно!) — иначе те же самые window-слушатели
+ *  ниже не получат события вообще (перетаскивание сдвигается на пиксель
+ *  и тут же откатывается — стоило один раз ошибиться с stopPropagation).
+ *  От случайного открытия карточки на редактирование после перетаскивания
+ *  ручкой защищаемся отдельно — глушим только сам click. */
 export function ReorderableList<T>({ items, getId, onReorder, renderItem }: ReorderableListProps<T>) {
   const [order, setOrder] = useState<string[]>(() => items.map(getId));
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -123,7 +153,7 @@ export function ReorderableList<T>({ items, getId, onReorder, renderItem }: Reor
     cleanupRef.current = onCancel;
   }
 
-  function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>, id: string) {
+  function handlePointerDown(e: ReactPointerEvent<HTMLElement>, id: string) {
     const startX = e.clientX;
     const startY = e.clientY;
     press.current = {
@@ -137,7 +167,7 @@ export function ReorderableList<T>({ items, getId, onReorder, renderItem }: Reor
     };
   }
 
-  function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>, id: string) {
+  function handlePointerMove(e: ReactPointerEvent<HTMLElement>, id: string) {
     if (press.current && press.current.id === id) {
       const dx = e.clientX - press.current.startX;
       const dy = e.clientY - press.current.startY;
@@ -149,12 +179,26 @@ export function ReorderableList<T>({ items, getId, onReorder, renderItem }: Reor
     clearPress();
   }
 
+  /** Долгое перетаскивание ручкой не должно попутно открывать карточку на
+   *  редактирование (клик — на всей строке, ручка внутри неё). */
+  function handleHandleClick(e: ReactMouseEvent<HTMLElement>) {
+    e.stopPropagation();
+  }
+
   return (
     <>
       {order.map((id) => {
         const item = itemById.get(id);
         if (!item) return null;
         const dragging = draggingId === id;
+        const handleProps: DragHandleProps = {
+          onPointerDown: (e) => handlePointerDown(e, id),
+          onPointerMove: (e) => handlePointerMove(e, id),
+          onPointerUp: handlePointerUp,
+          onPointerCancel: handlePointerUp,
+          onClick: handleHandleClick,
+          style: HANDLE_STYLE,
+        };
         return (
           <div
             key={id}
@@ -164,12 +208,8 @@ export function ReorderableList<T>({ items, getId, onReorder, renderItem }: Reor
             }}
             className={`reorderable-row${dragging ? ' is-dragging' : ''}`}
             style={dragging ? { transform: `translateY(${offsetY}px)` } : undefined}
-            onPointerDown={(e) => handlePointerDown(e, id)}
-            onPointerMove={(e) => handlePointerMove(e, id)}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
           >
-            {renderItem(item, dragging)}
+            {renderItem(item, dragging, handleProps)}
           </div>
         );
       })}
