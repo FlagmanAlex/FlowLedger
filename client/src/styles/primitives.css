@@ -278,7 +278,7 @@ textarea.neo-input {
 }
 
 .list-row + .list-row {
-  border-top: 1px solid rgba(245, 246, 250, 0.06);
+  border-top: 1px solid var(--divider);
 }
 
 .list-row__main {

@@ -1,6 +1,9 @@
 /*
  * Дизайн-токены — из .claude/plans/design_handoff_mobile_app/README.md.
- * Тёмная неоморфная тема, единственная (без light-варианта — так в спеке).
+ * Изначально тёмная неоморфная тема была единственной (так в спеке) — позже
+ * добавлена светлая как альтернатива через [data-theme="light"] на <html>
+ * (переключатель — экран «Настройки», хранится в localStorage конкретного
+ * браузера, см. src/lib/theme.ts). :root ниже — тёмная тема, она же дефолт.
  */
 :root {
   /* Поверхности */
@@ -9,6 +12,7 @@
   --shadow-dark: #12141c;
   --shadow-light: #242c49;
   --track-bg: #12141c;
+  --divider: rgba(245, 246, 250, 0.08);
 
   /* Текст */
   --text: #f5f6fa;
@@ -65,4 +69,21 @@
   --space-6: 32px;
 
   color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  /* Поверхности */
+  --bg: #e7ebf3;
+  --surface: #e7ebf3;
+  --shadow-dark: #b9c1d4;
+  --shadow-light: #ffffff;
+  --track-bg: #d6dceb;
+  --divider: rgba(27, 33, 54, 0.08);
+
+  /* Текст */
+  --text: #1b2136;
+  --text-secondary: rgba(27, 33, 54, 0.55);
+  --text-tertiary: rgba(27, 33, 54, 0.38);
+
+  color-scheme: light;
 }
