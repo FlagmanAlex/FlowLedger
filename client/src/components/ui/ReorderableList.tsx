@@ -105,9 +105,16 @@ export function ReorderableList<T>({ items, getId, onReorder, renderItem }: Reor
     setDraggingId(id);
     setOffsetY(0);
 
+    /* Перетаскиваемая строка рендерится в своей ТЕКУЩЕЙ позиции в потоке
+     *  (по индексу в order) плюс transform: translateY(offsetY). Свап
+     *  соседей меняет её позицию в потоке на высоту соседа — без поправки
+     *  строка в тот же миг «прыгает» на эту высоту, потому что offsetY
+     *  как было отсчитано от исходной точки нажатия, так и остаётся.
+     *  shift компенсирует этот прыжок, накапливая высоту каждого свапа. */
+    let shift = 0;
+
     function onMove(e: PointerEvent) {
       e.preventDefault();
-      setOffsetY(e.clientY - startY);
 
       const currentOrder = orderRef.current;
       const currentIndex = currentOrder.indexOf(id);
@@ -121,6 +128,8 @@ export function ReorderableList<T>({ items, getId, onReorder, renderItem }: Reor
           next.splice(currentIndex, 1);
           next.splice(currentIndex - 1, 0, id);
           setOrder(next);
+          shift += rect.height;
+          setOffsetY(e.clientY - startY + shift);
           return;
         }
       }
@@ -131,8 +140,13 @@ export function ReorderableList<T>({ items, getId, onReorder, renderItem }: Reor
           next.splice(currentIndex, 1);
           next.splice(currentIndex + 1, 0, id);
           setOrder(next);
+          shift -= rect.height;
+          setOffsetY(e.clientY - startY + shift);
+          return;
         }
       }
+
+      setOffsetY(e.clientY - startY + shift);
     }
 
     function onEnd(commit: boolean) {
