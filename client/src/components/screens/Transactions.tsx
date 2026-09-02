@@ -51,14 +51,14 @@ export function Transactions() {
 
   /** У двух кошельков разных владельцев может совпадать название — тогда
    *  подписи «Кошелёк» под операцией недостаточно, чтобы понять, о какой
-   *  именно карте речь. Добавляем владельца в скобках, только если
-   *  название неоднозначно (иначе не загромождаем обычный случай). */
+   *  именно карте речь. Добавляем владельца впереди, только если название
+   *  неоднозначно (иначе не загромождаем обычный случай). */
   function walletLabel(walletId: string | undefined): string {
     const wallet = walletId ? walletById.get(walletId) : undefined;
     if (!wallet) return '';
     const isAmbiguous = (walletNameCounts.get(wallet.name) ?? 0) > 1;
     const holder = wallet.holderId ? holderById.get(wallet.holderId) : undefined;
-    return isAmbiguous && holder ? `${wallet.name} (${holder.name})` : wallet.name;
+    return isAmbiguous && holder ? `${holder.name} ▪️${wallet.name}` : wallet.name;
   }
 
   const filtered = (transactions ?? []).filter((t) => filter === 'all' || t.type === filter);
@@ -120,6 +120,9 @@ export function Transactions() {
                       <div className="list-row__subtitle">
                         {walletLabel(t.walletId)} → {walletLabel(t.transferToWalletId)}
                       </div>
+                      {t.description && (
+                        <div className="list-row__description">{t.description}</div>
+                      )}
                     </div>
                     <div className="amount-neutral">
                       {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
@@ -146,6 +149,7 @@ export function Transactions() {
                       {category?.name ?? (t.categoryId ? 'Без категории' : t.description ?? 'Операция')}
                     </div>
                     <div className="list-row__subtitle">{walletLabel(t.walletId)}</div>
+                    {t.description && <div className="list-row__description">{t.description}</div>}
                   </div>
                   <div className={t.type === 'expense' ? 'amount-negative' : 'amount-positive'}>
                     {t.type === 'expense' ? '−' : '+'}
