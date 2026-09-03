@@ -6,6 +6,12 @@ export interface Transaction {
   walletId: string;
   categoryId?: string;
   transferToWalletId?: string;
+  /** Курс из валюты walletId в валюту transferToWalletId — только для type
+   *  'transfer'. 1, если валюты кошельков совпадают. */
+  exchangeRate?: number;
+  /** Комиссия банка в процентах — только для type 'transfer' между разными
+   *  валютами, уменьшает итоговый курс зачисления. */
+  commissionPercent?: number;
   type: TransactionType;
   amount: number;
   description?: string;

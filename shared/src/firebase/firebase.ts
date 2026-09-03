@@ -16,6 +16,11 @@ let auth: Auth | undefined;
  * браузере (IndexedDB), и в React Native (см. shared/CLAUDE.md); без
  * явного tabManager используется однотабличный режим — безопасный
  * универсальный вариант для обеих платформ.
+ *
+ * ignoreUndefinedProperties: repositories собирают документы через spread
+ * необязательных полей (например description: description || undefined) —
+ * без этого флага Firestore SDK бросает исключение на любом explicit
+ * undefined-поле вместо того, чтобы просто его пропустить.
  */
 export function initFirebase(config: FirebaseOptions): {
   app: FirebaseApp;
@@ -23,7 +28,10 @@ export function initFirebase(config: FirebaseOptions): {
   auth: Auth;
 } {
   app = getApps()[0] ?? initializeApp(config);
-  firestore = initializeFirestore(app, { localCache: persistentLocalCache() });
+  firestore = initializeFirestore(app, {
+    localCache: persistentLocalCache(),
+    ignoreUndefinedProperties: true,
+  });
   auth = getAuth(app);
   return { app, firestore, auth };
 }

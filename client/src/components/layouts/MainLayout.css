@@ -3,6 +3,14 @@
   display: flex;
 }
 
+.topbar {
+  display: none;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
 .sidebar {
   width: 232px;
   flex-shrink: 0;
@@ -18,6 +26,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-2);
+  text-decoration: none;
 }
 
 .sidebar__badge {
@@ -101,32 +110,73 @@
     flex-direction: column;
   }
 
-  .sidebar {
-    width: 100%;
-    flex-direction: row;
+  .topbar {
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: var(--space-3) var(--space-4);
     box-shadow: none;
-    border-bottom: 1px solid rgba(245, 246, 250, 0.08);
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .topbar__menu-toggle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    box-shadow: var(--neo-raised-sm);
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .topbar__menu-toggle span {
+    display: block;
+    height: 2px;
+    margin: 0 9px;
+    border-radius: 1px;
+    background: var(--text);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 7, 14, 0.6);
+    z-index: 200;
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 201;
+    width: 260px;
+    max-width: 80vw;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    padding: var(--space-5) var(--space-4);
+    background: var(--bg);
+    box-shadow: var(--neo-raised-lg);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
   }
 
   .sidebar__nav {
-    flex-direction: row;
-    flex: 1;
-    overflow-x: auto;
-    gap: var(--space-2);
+    overflow-y: auto;
   }
 
   .sidebar__link {
     white-space: nowrap;
-    padding: var(--space-2) var(--space-3);
-  }
-
-  .sidebar__signout {
-    width: auto;
+    padding: var(--space-3) var(--space-4);
   }
 
   .content {
-    padding: var(--space-5) var(--space-4) calc(var(--space-6) + 58px);
+    padding: var(--space-5) var(--space-4) var(--space-6);
   }
 }

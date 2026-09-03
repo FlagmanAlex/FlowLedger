@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { useCategories, useTransactions, useWallets } from '@flowledger/shared';
+import { useCategories, useHolders, useTransactions, useWallets } from '@flowledger/shared';
 import type { Transaction, TransactionType } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { AddTransactionModal } from '@/components/ui/AddTransactionModal';
+import { TransferModal } from '@/components/ui/TransferModal';
 import { colorForId } from '@/lib/palette';
 import { formatAmount, formatDateHeader } from '@/lib/format';
 import './Transactions.css';
@@ -32,13 +33,33 @@ export function Transactions() {
   const [filter, setFilter] = useState<TxFilter>('all');
   const [showAdd, setShowAdd] = useState(false);
   const [addType, setAddType] = useState<TransactionType>('expense');
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
 
   const { data: wallets } = useWallets(ownerId);
   const { data: categories } = useCategories(ownerId);
+  const { data: holders } = useHolders(ownerId);
   const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId });
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
+  const holderById = new Map((holders ?? []).map((h) => [h.id, h]));
+  const walletNameCounts = new Map<string, number>();
+  for (const w of wallets ?? []) {
+    walletNameCounts.set(w.name, (walletNameCounts.get(w.name) ?? 0) + 1);
+  }
+
+  /** У двух кошельков разных владельцев может совпадать название — тогда
+   *  подписи «Кошелёк» под операцией недостаточно, чтобы понять, о какой
+   *  именно карте речь. Добавляем владельца впереди, только если название
+   *  неоднозначно (иначе не загромождаем обычный случай). */
+  function walletLabel(walletId: string | undefined): string {
+    const wallet = walletId ? walletById.get(walletId) : undefined;
+    if (!wallet) return '';
+    const isAmbiguous = (walletNameCounts.get(wallet.name) ?? 0) > 1;
+    const holder = wallet.holderId ? holderById.get(wallet.holderId) : undefined;
+    return isAmbiguous && holder ? `${holder.name} ▪️${wallet.name}` : wallet.name;
+  }
 
   const filtered = (transactions ?? []).filter((t) => filter === 'all' || t.type === filter);
   const groups = groupByDate(filtered);
@@ -83,10 +104,41 @@ export function Transactions() {
           <div key={group.date}>
             <div className="date-header">{formatDateHeader(group.date)}</div>
             {group.items.map((t) => {
-              const category = t.categoryId ? categoryById.get(t.categoryId) : undefined;
               const wallet = walletById.get(t.walletId);
+
+              if (t.type === 'transfer') {
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="list-row list-row--clickable"
+                    onClick={() => setEditingTransfer(t)}
+                  >
+                    <IconCircle label="⇄" color={colorForId(t.walletId)} size={38} />
+                    <div className="list-row__main">
+                      <div className="list-row__title">Перевод</div>
+                      <div className="list-row__subtitle">
+                        {walletLabel(t.walletId)} → {walletLabel(t.transferToWalletId)}
+                      </div>
+                      {t.description && (
+                        <div className="list-row__description">{t.description}</div>
+                      )}
+                    </div>
+                    <div className="amount-neutral">
+                      {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
+                    </div>
+                  </button>
+                );
+              }
+
+              const category = t.categoryId ? categoryById.get(t.categoryId) : undefined;
               return (
-                <div key={t.id} className="list-row">
+                <button
+                  key={t.id}
+                  type="button"
+                  className="list-row list-row--clickable"
+                  onClick={() => setEditingTx(t)}
+                >
                   <IconCircle
                     label={category?.name ?? '·'}
                     color={category ? category.color ?? colorForId(category.id) : colorForId(t.walletId)}
@@ -94,15 +146,16 @@ export function Transactions() {
                   />
                   <div className="list-row__main">
                     <div className="list-row__title">
-                      {category?.name ?? t.description ?? 'Операция'}
+                      {category?.name ?? (t.categoryId ? 'Без категории' : t.description ?? 'Операция')}
                     </div>
-                    <div className="list-row__subtitle">{wallet?.name ?? ''}</div>
+                    <div className="list-row__subtitle">{walletLabel(t.walletId)}</div>
+                    {t.description && <div className="list-row__description">{t.description}</div>}
                   </div>
                   <div className={t.type === 'expense' ? 'amount-negative' : 'amount-positive'}>
                     {t.type === 'expense' ? '−' : '+'}
-                    {formatAmount(Math.abs(t.amount))} ₽
+                    {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -121,6 +174,28 @@ export function Transactions() {
           categories={categories ?? []}
           defaultType={addType}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+
+      {editingTx && (
+        <AddTransactionModal
+          user={user}
+          ownerId={ownerId}
+          wallets={wallets ?? []}
+          categories={categories ?? []}
+          defaultType={editingTx.type === 'expense' ? 'expense' : 'income'}
+          transaction={editingTx}
+          onClose={() => setEditingTx(null)}
+        />
+      )}
+
+      {editingTransfer && (
+        <TransferModal
+          user={user}
+          ownerId={ownerId}
+          wallets={wallets ?? []}
+          transaction={editingTransfer}
+          onClose={() => setEditingTransfer(null)}
         />
       )}
     </div>

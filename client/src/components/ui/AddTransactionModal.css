@@ -30,13 +30,6 @@
   gap: var(--space-3);
 }
 
-.add-tx__chip-row {
-  display: flex;
-  gap: var(--space-2);
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
 .add-tx__category-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -48,6 +41,13 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  /* Грид-ячейка по умолчанию не сжимается меньше min-content своего
+   *  содержимого (длинное название категории без пробелов) — из-за этого
+   *  сетка вылезала за пределы модалки на мобильном, и вся страница
+   *  становилась горизонтально прокручиваемой. min-width: 0 разрешает
+   *  ячейке сжаться до ширины колонки (1fr), дальше текст обрезает
+   *  многоточием span ниже. */
+  min-width: 0;
   padding: var(--space-2);
   border: 2px solid transparent;
   border-radius: var(--radius-md);

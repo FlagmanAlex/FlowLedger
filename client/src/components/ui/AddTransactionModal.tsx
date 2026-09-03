@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useCreateTransaction, type UseAuthResult } from '@flowledger/shared';
-import type { Category, TransactionType, Wallet } from '@flowledger/interfaces';
+import {
+  useCreateTransaction,
+  useDeleteTransaction,
+  useHolders,
+  useUpdateTransaction,
+  type UseAuthResult,
+} from '@flowledger/shared';
+import type { Category, Transaction, TransactionType, Wallet } from '@flowledger/interfaces';
 import { IconCircle } from '@/components/ui/IconCircle';
+import { WalletPicker } from '@/components/ui/WalletPicker';
 import { colorForId } from '@/lib/palette';
 import './AddTransactionModal.css';
 
@@ -11,6 +18,7 @@ interface AddTransactionModalProps {
   wallets: Wallet[];
   categories: Category[];
   defaultType: TransactionType;
+  transaction?: Transaction;
   onClose: () => void;
 }
 
@@ -24,16 +32,21 @@ export function AddTransactionModal({
   wallets,
   categories,
   defaultType,
+  transaction,
   onClose,
 }: AddTransactionModalProps) {
   const createTransaction = useCreateTransaction(ownerId);
+  const updateTransaction = useUpdateTransaction();
+  const deleteTransaction = useDeleteTransaction();
+  const { data: holders } = useHolders(ownerId);
+  const isEditing = Boolean(transaction);
 
-  const [type, setType] = useState<TransactionType>(defaultType);
-  const [amount, setAmount] = useState('');
-  const [walletId, setWalletId] = useState<string | undefined>(wallets[0]?.id);
-  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(today());
+  const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType);
+  const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
+  const [walletId, setWalletId] = useState<string | undefined>(transaction?.walletId ?? wallets[0]?.id);
+  const [categoryId, setCategoryId] = useState<string | undefined>(transaction?.categoryId);
+  const [description, setDescription] = useState(transaction?.description ?? '');
+  const [date, setDate] = useState(transaction?.date ?? today());
   const [error, setError] = useState<string | null>(null);
 
   const categoriesForType = categories.filter((c) => c.type === type);
@@ -52,17 +65,51 @@ export function AddTransactionModal({
       return;
     }
 
-    await createTransaction.mutateAsync({
-      walletId,
-      categoryId,
-      type,
-      amount: numericAmount,
-      description: description || undefined,
-      date,
-      createdBy: user.uid,
-    });
-    onClose();
+    setError(null);
+    try {
+      if (transaction) {
+        await updateTransaction.mutateAsync({
+          id: transaction.id,
+          patch: {
+            walletId,
+            categoryId,
+            type,
+            amount: numericAmount,
+            description: description || undefined,
+            date,
+          },
+        });
+      } else {
+        await createTransaction.mutateAsync({
+          walletId,
+          categoryId,
+          type,
+          amount: numericAmount,
+          description: description || undefined,
+          date,
+          createdBy: user.uid,
+        });
+      }
+      onClose();
+    } catch (err) {
+      console.error('Не удалось сохранить операцию', err);
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить операцию');
+    }
   }
+
+  async function handleDelete() {
+    if (!transaction) return;
+    setError(null);
+    try {
+      await deleteTransaction.mutateAsync(transaction.id);
+      onClose();
+    } catch (err) {
+      console.error('Не удалось удалить операцию', err);
+      setError(err instanceof Error ? err.message : 'Не удалось удалить операцию');
+    }
+  }
+
+  const isSaving = createTransaction.isPending || updateTransaction.isPending;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -71,8 +118,8 @@ export function AddTransactionModal({
           <button type="button" className="neo-button neo-button--icon" onClick={onClose}>
             ✕
           </button>
-          <span className="modal-sheet__title">Новая операция</span>
-          <span style={{ width: 36 }} />
+          <span className="modal-sheet__title">{isEditing ? 'Операция' : 'Новая операция'}</span>
+          <span style={{ width: 44 }} />
         </div>
 
         <div className="segmented add-tx__type">
@@ -102,24 +149,14 @@ export function AddTransactionModal({
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9,.]/g, ''))}
             autoFocus
           />
-          <span className="add-tx__amount-suffix">₽</span>
+          <span className="add-tx__amount-suffix">
+            {wallets.find((w) => w.id === walletId)?.currency ?? ''}
+          </span>
         </div>
 
         <div className="add-tx__section">
           <h3 className="section-title">Кошелёк</h3>
-          <div className="add-tx__chip-row">
-            {wallets.map((w) => (
-              <button
-                key={w.id}
-                type="button"
-                className={`chip${walletId === w.id ? ' is-selected' : ''}`}
-                style={{ ['--chip-accent' as string]: w.color ?? colorForId(w.id) }}
-                onClick={() => setWalletId(w.id)}
-              >
-                {w.name}
-              </button>
-            ))}
-          </div>
+          <WalletPicker wallets={wallets} holders={holders} selectedId={walletId} onSelect={setWalletId} />
         </div>
 
         <div className="add-tx__section">
@@ -172,10 +209,21 @@ export function AddTransactionModal({
           type="button"
           className="neo-button neo-button--accent neo-button--full"
           onClick={handleSave}
-          disabled={createTransaction.isPending}
+          disabled={isSaving}
         >
-          Сохранить
+          {isSaving ? 'Сохранение…' : 'Сохранить'}
         </button>
+
+        {isEditing && (
+          <button
+            type="button"
+            className="neo-button neo-button--full neo-button--danger"
+            onClick={handleDelete}
+            disabled={deleteTransaction.isPending}
+          >
+            {deleteTransaction.isPending ? 'Удаление…' : 'Удалить операцию'}
+          </button>
+        )}
       </div>
     </div>
   );
