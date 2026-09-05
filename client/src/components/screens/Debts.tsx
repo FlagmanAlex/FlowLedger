@@ -22,6 +22,7 @@ export function Debts() {
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [repayingDebt, setRepayingDebt] = useState<Debt | null>(null);
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const activeWallets = (wallets ?? []).filter((w) => !w.archived);
   const all = debts ?? [];
@@ -31,6 +32,18 @@ export function Debts() {
 
   function walletCurrency(walletId: string): string {
     return (wallets ?? []).find((w) => w.id === walletId)?.currency ?? '';
+  }
+
+  async function handleDeleteDebt() {
+    if (!debtToDelete) return;
+    setDeleteError(null);
+    try {
+      await deleteDebt.mutateAsync(debtToDelete.id);
+      setDebtToDelete(null);
+    } catch (err) {
+      console.error('Не удалось удалить долг', err);
+      setDeleteError(err instanceof Error ? err.message : 'Не удалось удалить долг');
+    }
   }
 
   function debtCard(d: Debt) {
@@ -172,11 +185,13 @@ export function Debts() {
         <ConfirmDialog
           title="Удалить долг?"
           message={`«${debtToDelete.counterpartyName}» и все связанные операции (выдача/получение, погашения) пропадут из журнала, баланс кошелька пересчитается.`}
-          onCancel={() => setDebtToDelete(null)}
-          onConfirm={() => {
-            deleteDebt.mutate(debtToDelete.id);
+          error={deleteError}
+          isPending={deleteDebt.isPending}
+          onCancel={() => {
+            setDeleteError(null);
             setDebtToDelete(null);
           }}
+          onConfirm={handleDeleteDebt}
         />
       )}
     </div>
