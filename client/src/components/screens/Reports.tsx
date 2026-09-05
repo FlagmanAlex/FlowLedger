@@ -73,33 +73,33 @@ export function Reports() {
           <div className="reports-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(245,246,250,0.08)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--divider)" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fill: 'rgba(245,246,250,0.5)', fontSize: 11 }}
-                  axisLine={{ stroke: 'rgba(245,246,250,0.08)' }}
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
+                  axisLine={{ stroke: 'var(--divider)' }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: 'rgba(245,246,250,0.5)', fontSize: 11 }}
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   width={48}
                 />
                 <Tooltip
-                  cursor={{ fill: 'rgba(245,246,250,0.04)' }}
+                  cursor={{ fill: 'color-mix(in srgb, var(--text) 4%, transparent)' }}
                   contentStyle={{
-                    background: '#1b2136',
+                    background: 'var(--surface)',
                     border: 'none',
                     borderRadius: 12,
-                    boxShadow: '5px 5px 10px #12141c, -5px -5px 10px #242c49',
+                    boxShadow: 'var(--neo-raised-sm)',
                   }}
-                  labelStyle={{ color: 'rgba(245,246,250,0.5)' }}
-                  itemStyle={{ color: '#f5f6fa' }}
+                  labelStyle={{ color: 'var(--text-secondary)' }}
+                  itemStyle={{ color: 'var(--text)' }}
                 />
-                <Legend wrapperStyle={{ fontSize: 12, color: 'rgba(245,246,250,0.5)' }} />
-                <Bar dataKey="income" name="Доход" fill="#2fe6b8" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expense" name="Расход" fill="#ff5c7a" radius={[4, 4, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
+                <Bar dataKey="income" name="Доход" fill="var(--positive)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expense" name="Расход" fill="var(--negative)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
