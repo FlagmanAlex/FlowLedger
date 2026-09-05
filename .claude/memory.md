@@ -61,8 +61,16 @@ FlowLedger — учёт доходов/расходов, продаётся ка
 - **Модель операций**: единый журнал, signed amount + `type: income|expense|transfer|debt_lend|
   debt_borrow|debt_repayment` (см. «Долги» ниже для последних трёх).
 - **Долги** (`interfaces/src/debt.interface.ts`, `shared/src/repositories/debts.repo.ts`) — учёт
-  займов физлицам/банкам, top-level коллекция `debts` (`hasAccess(userId)` в правилах, тот же
-  паттерн, что у wallets/categories/…). Долг обязательно привязан к кошельку (`Debt.walletId`) —
+  займов, top-level коллекция `debts` (`hasAccess(userId)` в правилах, тот же паттерн, что у
+  wallets/categories/…). Контрагент — отдельная сущность `Counterparty` (`counterparty.interface.ts`,
+  `counterparties.repo.ts`/`useCounterparties.ts`, своя top-level коллекция `counterparties`),
+  `Debt.counterpartyId` ссылается на неё — тот же паттерн, что `Wallet.holderId` → `Holder`: чипы
+  существующих + инлайн «+ Добавить» прямо в `DebtModal`, без перехода на отдельный экран. Первая
+  версия хранила `counterpartyName`/`counterpartyType('person'|'bank')` прямо на `Debt` со
+  свободным текстом — переделано 2026-09-05 по фидбеку пользователя (контрагент должен заводиться
+  через пикер с коллекцией, как владелец/валюта у кошельков, а не как поле); заодно убрано
+  разделение банк/физлицо — оно ни на что не влияло (только выбор иконки), лишний шаг в форме.
+  Долг обязательно привязан к кошельку (`Debt.walletId`) —
   выдача/получение/погашение двигают его баланс как обычная операция, а не отдельный учёт в
   стороне. Реализовано через три новых `TransactionType` с полем `debtId` (+ снимок
   `debtDirection` на транзакции — знак движения по кошельку для `debt_repayment` иначе потребовал

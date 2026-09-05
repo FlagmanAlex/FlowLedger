@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore';
 import type {
   Category,
+  Counterparty,
   Currency,
   Debt,
   Holder,
@@ -47,6 +48,12 @@ export function holdersCollection(): CollectionReference<Holder> {
 
 export function debtsCollection(): CollectionReference<Debt> {
   return collection(getFirestoreInstance(), 'debts').withConverter(converter<Debt>());
+}
+
+export function counterpartiesCollection(): CollectionReference<Counterparty> {
+  return collection(getFirestoreInstance(), 'counterparties').withConverter(
+    converter<Counterparty>(),
+  );
 }
 
 export function invitesCollection(): CollectionReference<Invite> {

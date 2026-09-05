@@ -7,6 +7,7 @@ interface RepayDebtModalProps {
   user: UseAuthResult['user'];
   ownerId: string | undefined;
   debt: Debt;
+  counterpartyName: string;
   currency: string;
   onClose: () => void;
 }
@@ -15,7 +16,7 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function RepayDebtModal({ user, ownerId, debt, currency, onClose }: RepayDebtModalProps) {
+export function RepayDebtModal({ user, ownerId, debt, counterpartyName, currency, onClose }: RepayDebtModalProps) {
   const repayDebt = useRepayDebt(ownerId);
   const [amount, setAmount] = useState(String(debt.remainingAmount));
   const [date, setDate] = useState(today());
@@ -55,7 +56,7 @@ export function RepayDebtModal({ user, ownerId, debt, currency, onClose }: Repay
         </div>
 
         <p className="state-message">
-          {debt.direction === 'lent' ? 'Возврат от' : 'Платёж для'} «{debt.counterpartyName}» — остаток{' '}
+          {debt.direction === 'lent' ? 'Возврат от' : 'Платёж для'} «{counterpartyName}» — остаток{' '}
           {formatAmount(debt.remainingAmount)} {currency}
         </p>
 

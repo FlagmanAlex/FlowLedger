@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { useCategories, useDebts, useHolders, useTransactions, useWallets } from '@flowledger/shared';
+import { useCategories, useCounterparties, useDebts, useHolders, useTransactions, useWallets } from '@flowledger/shared';
 import type { Transaction, TransactionType } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -40,12 +40,14 @@ export function Transactions() {
   const { data: categories } = useCategories(ownerId);
   const { data: holders } = useHolders(ownerId);
   const { data: debts } = useDebts(ownerId);
+  const { data: counterparties } = useCounterparties(ownerId);
   const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId });
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
   const holderById = new Map((holders ?? []).map((h) => [h.id, h]));
   const debtById = new Map((debts ?? []).map((d) => [d.id, d]));
+  const counterpartyById = new Map((counterparties ?? []).map((c) => [c.id, c]));
   const walletNameCounts = new Map<string, number>();
   for (const w of wallets ?? []) {
     walletNameCounts.set(w.name, (walletNameCounts.get(w.name) ?? 0) + 1);
@@ -135,7 +137,7 @@ export function Transactions() {
 
               if (t.type === 'debt_lend' || t.type === 'debt_borrow' || t.type === 'debt_repayment') {
                 const debt = t.debtId ? debtById.get(t.debtId) : undefined;
-                const name = debt?.counterpartyName ?? 'Долг';
+                const name = (debt ? counterpartyById.get(debt.counterpartyId)?.name : undefined) ?? 'Долг';
                 const title =
                   t.type === 'debt_lend'
                     ? `Выдача займа — ${name}`
@@ -149,7 +151,7 @@ export function Transactions() {
                   <div key={t.id} className="list-row">
                     <IconCircle
                       label={name}
-                      icon={debt?.counterpartyType === 'bank' ? '🏦' : '🤝'}
+                      icon="🤝"
                       color={debt ? colorForId(debt.id) : colorForId(t.walletId)}
                       size={38}
                     />

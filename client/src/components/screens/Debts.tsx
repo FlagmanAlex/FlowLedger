@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useDebtOpeningTransaction, useDebts, useDeleteDebt, useHolders, useWallets } from '@flowledger/shared';
+import {
+  useCounterparties,
+  useDebtOpeningTransaction,
+  useDebts,
+  useDeleteDebt,
+  useHolders,
+  useWallets,
+} from '@flowledger/shared';
 import type { Debt } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -16,6 +23,7 @@ export function Debts() {
   const { data: debts, isLoading } = useDebts(ownerId);
   const { data: wallets } = useWallets(ownerId);
   const { data: holders } = useHolders(ownerId);
+  const { data: counterparties } = useCounterparties(ownerId);
   const deleteDebt = useDeleteDebt(ownerId);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -35,6 +43,10 @@ export function Debts() {
     return (wallets ?? []).find((w) => w.id === walletId)?.currency ?? '';
   }
 
+  function counterpartyName(id: string): string {
+    return (counterparties ?? []).find((c) => c.id === id)?.name ?? 'Без контрагента';
+  }
+
   async function handleDeleteDebt() {
     if (!debtToDelete) return;
     setDeleteError(null);
@@ -50,17 +62,13 @@ export function Debts() {
   function debtCard(d: Debt) {
     const percent = d.principal > 0 ? ((d.principal - d.remainingAmount) / d.principal) * 100 : 100;
     const accent = colorForId(d.id);
+    const name = counterpartyName(d.counterpartyId);
     return (
       <div key={d.id} className="debt-card">
         <button type="button" className="list-row list-row--clickable" onClick={() => setEditingDebt(d)}>
-          <IconCircle
-            label={d.counterpartyName}
-            icon={d.counterpartyType === 'bank' ? '🏦' : '🙂'}
-            color={accent}
-            size={36}
-          />
+          <IconCircle label={name} icon="🤝" color={accent} size={36} />
           <div className="list-row__main">
-            <div className="list-row__title">{d.counterpartyName}</div>
+            <div className="list-row__title">{name}</div>
             <div className="list-row__subtitle">
               {d.status === 'active'
                 ? d.direction === 'lent'
@@ -186,6 +194,7 @@ export function Debts() {
           user={user}
           ownerId={ownerId}
           debt={repayingDebt}
+          counterpartyName={counterpartyName(repayingDebt.counterpartyId)}
           currency={walletCurrency(repayingDebt.walletId)}
           onClose={() => setRepayingDebt(null)}
         />
@@ -194,7 +203,7 @@ export function Debts() {
       {debtToDelete && (
         <ConfirmDialog
           title="Удалить долг?"
-          message={`«${debtToDelete.counterpartyName}» и все связанные операции (выдача/получение, погашения) пропадут из журнала, баланс кошелька пересчитается.`}
+          message={`«${counterpartyName(debtToDelete.counterpartyId)}» и все связанные операции (выдача/получение, погашения) пропадут из журнала, баланс кошелька пересчитается.`}
           error={deleteError}
           isPending={deleteDebt.isPending}
           onCancel={() => {

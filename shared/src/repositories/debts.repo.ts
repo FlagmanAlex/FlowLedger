@@ -22,8 +22,7 @@ export async function listDebts(userId: string): Promise<Debt[]> {
 export interface CreateDebtInput {
   walletId: string;
   direction: Debt['direction'];
-  counterpartyType: Debt['counterpartyType'];
-  counterpartyName: string;
+  counterpartyId: string;
   principal: number;
   dueDate?: string;
   date: string;
@@ -47,8 +46,7 @@ export async function createDebt(
     userId,
     walletId: input.walletId,
     direction: input.direction,
-    counterpartyType: input.counterpartyType,
-    counterpartyName: input.counterpartyName,
+    counterpartyId: input.counterpartyId,
     principal: input.principal,
     remainingAmount: 0,
     dueDate: input.dueDate,
@@ -71,15 +69,16 @@ export async function createDebt(
   return ref.id;
 }
 
-/** Правит карточку долга — контрагент, срок. Направление (lent/borrowed)
- *  сюда не входит: поменять его значило бы перевернуть знак движения
- *  кошелька у уже сделанных погашений (снимок debtDirection на каждой
- *  из них), а не только у открывающей операции — для редкой опечатки
- *  проще удалить долг и завести заново. Сумма/кошелёк/дата/описание
- *  открывающей операции — через updateDebtOpening ниже, не здесь. */
+/** Правит карточку долга — контрагент (ссылка на Counterparty), срок.
+ *  Направление (lent/borrowed) сюда не входит: поменять его значило бы
+ *  перевернуть знак движения кошелька у уже сделанных погашений (снимок
+ *  debtDirection на каждой из них), а не только у открывающей операции —
+ *  для редкой опечатки проще удалить долг и завести заново. Сумма/
+ *  кошелёк/дата/описание открывающей операции — через updateDebtOpening
+ *  ниже, не здесь. */
 export async function updateDebt(
   id: string,
-  patch: Partial<Pick<Debt, 'counterpartyName' | 'counterpartyType' | 'dueDate'>>,
+  patch: Partial<Pick<Debt, 'counterpartyId' | 'dueDate'>>,
 ): Promise<void> {
   await updateDoc(doc(debtsCollection(), id), patch);
 }

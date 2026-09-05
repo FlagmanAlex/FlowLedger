@@ -12,10 +12,9 @@
 
 ## Модель данных
 
-### `interfaces/src/debt.interface.ts` (новый файл)
+### `interfaces/src/debt.interface.ts` + `interfaces/src/counterparty.interface.ts`
 ```ts
 export type DebtDirection = 'lent' | 'borrowed'; // lent — я дал в долг, borrowed — я взял в долг
-export type DebtCounterpartyType = 'person' | 'bank';
 export type DebtStatus = 'active' | 'closed';
 
 export interface Debt {
@@ -23,8 +22,7 @@ export interface Debt {
   userId: string;              // владелец базы (workspace), как и в остальных коллекциях
   walletId: string;            // кошелёк, к которому привязан долг — валюта долга = валюта кошелька
   direction: DebtDirection;
-  counterpartyType: DebtCounterpartyType;
-  counterpartyName: string;    // имя человека или название банка
+  counterpartyId: string;      // ссылка на Counterparty — как holderId у Wallet
   principal: number;           // исходная сумма долга
   remainingAmount: number;     // текущий остаток — обновляется атомарно вместе с балансом кошелька
   dueDate?: string;
@@ -32,9 +30,29 @@ export interface Debt {
   createdBy: string;           // фактический автор (см. Transaction.createdBy)
   createdAt: string;
 }
+
+// counterparty.interface.ts — отдельная сущность, по образцу Holder у кошельков
+export interface Counterparty {
+  id: string;
+  userId: string;
+  name: string;
+  color?: string;
+  createdAt: string;
+}
 ```
 Валюта отдельным полем не хранится — берётся из `Wallet.currency` привязанного `walletId` (как и у
 обычных транзакций), чтобы не рассинхронизироваться.
+
+**Изменено 2026-09-05 (по фидбеку пользователя):** первая версия хранила `counterpartyName: string`
++ `counterpartyType: 'person'|'bank'` прямо на `Debt`, со свободным текстовым полем и чипами
+банк/физлицо в форме. Это разошлось с исходной постановкой задачи — контрагент должен быть
+**отдельной коллекцией** с пикером и инлайн-добавлением прямо в форме, тем же паттерном, что
+`Holder`/`Currency` у кошельков (чипы существующих + «+ Добавить» с текстовым полем на месте, без
+перехода на отдельный экран). Переделано: `Counterparty` — новая top-level коллекция
+(`counterpartiesCollection()`, `counterparties.repo.ts`, `useCounterparties.ts`, блок в
+`firestore.rules` — всё по образцу `holders.repo.ts`), `Debt.counterpartyId` — ссылка на неё вместо
+хранения имени внутри самого долга. Разделение банк/физлицо убрано целиком (`DebtCounterpartyType`
+не существует) — оно ни на что не влияло, кроме иконки, и было лишним шагом в форме.
 
 ### Расширение `interfaces/src/transaction.interface.ts`
 ```ts
@@ -82,9 +100,9 @@ debtId?: string; // только для debt_lend / debt_borrow / debt_repayment
   (активные/погашенные) и/или по `direction` (дал/взял), карточка: контрагент, сумма/остаток,
   прогресс погашения (`.progress-track`/`.progress-fill` из примитивов), дата возврата если задана.
   По образцу `Wallets.tsx` (свайп-действия, `ReorderableList` не обязателен — сортировка по дате).
-- `client/src/components/ui/DebtModal.tsx` — создание долга: направление (dan/взял — segmented
-  control), тип контрагента (person/bank — chips), имя контрагента, кошелёк (`WalletPicker`),
-  сумма, опционально дата возврата. По образцу `WalletModal.tsx`.
+- `client/src/components/ui/DebtModal.tsx` — создание долга: направление (дал/взял — segmented
+  control), контрагент (чипы `Counterparty` + инлайн «+ Добавить», как владелец/валюта в
+  `WalletModal.tsx`), кошелёк (`WalletPicker`), сумма, опционально дата возврата.
 - Погашение — отдельная лёгкая форма/модалка (сумма погашения ≤ остатка) поверх карточки долга,
   создающая транзакцию `debt_repayment`, по образцу `TransferModal.tsx`.
 - Пункт `NAV_ITEMS` в `MainLayout.tsx` + маршрут `debts` в `App.tsx`.

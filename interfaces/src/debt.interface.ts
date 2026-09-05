@@ -1,8 +1,6 @@
 /** lent — я дал в долг (мне должны), borrowed — я взял в долг (я должен). */
 export type DebtDirection = 'lent' | 'borrowed';
 
-export type DebtCounterpartyType = 'person' | 'bank';
-
 /** 'closed' проставляется автоматически, когда remainingAmount доходит до
  *  0 — не выставляется руками пользователем. */
 export type DebtStatus = 'active' | 'closed';
@@ -18,8 +16,10 @@ export interface Debt {
   userId: string;
   walletId: string;
   direction: DebtDirection;
-  counterpartyType: DebtCounterpartyType;
-  counterpartyName: string;
+  /** Ссылка на Counterparty — как holderId у Wallet, а не хранить имя
+   *  на самом Debt: контрагент заводится и выбирается тем же инлайн-
+   *  пикером, что владелец/валюта в форме кошелька. */
+  counterpartyId: string;
   principal: number;
   /** Текущий остаток — обновляется той же атомарной транзакцией, что и
    *  баланс кошелька (см. transactions.repo.ts), никогда не редактируется

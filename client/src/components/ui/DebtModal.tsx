@@ -1,6 +1,13 @@
 import { useState } from 'react';
-import { useCreateDebt, useUpdateDebt, useUpdateDebtOpening, type UseAuthResult } from '@flowledger/shared';
-import type { Debt, DebtCounterpartyType, DebtDirection, Holder, Transaction, Wallet } from '@flowledger/interfaces';
+import {
+  useCreateCounterparty,
+  useCreateDebt,
+  useCounterparties,
+  useUpdateDebt,
+  useUpdateDebtOpening,
+  type UseAuthResult,
+} from '@flowledger/shared';
+import type { Debt, DebtDirection, Holder, Transaction, Wallet } from '@flowledger/interfaces';
 import { WalletPicker } from '@/components/ui/WalletPicker';
 import './WalletModal.css';
 
@@ -24,25 +31,30 @@ function today(): string {
 
 /**
  * Создание долга заводит и открывающую операцию (debt_lend/debt_borrow) в
- * общем журнале. Редактирование правит и карточку долга (контрагент/тип/
+ * общем журнале. Редактирование правит и карточку долга (контрагент/
  * срок — updateDebt), и саму открывающую операцию (сумма/кошелёк/дата/
  * описание — updateDebtOpening, та же атомарная логика баланса, что и у
  * обычных операций). Направление (дал/взял) после создания не меняется —
  * это перевернуло бы знак движения кошелька у уже сделанных погашений
  * (см. debts.repo.ts); для такой правки проще удалить долг и завести
  * заново.
+ *
+ * Контрагент — отдельная сущность (Counterparty), как Holder у кошелька:
+ * список чипов + инлайн-добавление нового прямо здесь, а не свободный
+ * текст — так же, как владелец/валюта заводятся в WalletModal.
  */
 export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransaction, onClose }: DebtModalProps) {
+  const { data: counterparties } = useCounterparties(ownerId);
+  const createCounterparty = useCreateCounterparty(ownerId);
   const createDebt = useCreateDebt(ownerId);
   const updateDebt = useUpdateDebt();
   const updateDebtOpening = useUpdateDebtOpening();
   const isEditing = Boolean(debt);
 
   const [direction, setDirection] = useState<DebtDirection>(debt?.direction ?? 'lent');
-  const [counterpartyType, setCounterpartyType] = useState<DebtCounterpartyType>(
-    debt?.counterpartyType ?? 'person',
-  );
-  const [counterpartyName, setCounterpartyName] = useState(debt?.counterpartyName ?? '');
+  const [counterpartyId, setCounterpartyId] = useState<string | undefined>(debt?.counterpartyId);
+  const [showAddCounterparty, setShowAddCounterparty] = useState(false);
+  const [newCounterpartyName, setNewCounterpartyName] = useState('');
   const [walletId, setWalletId] = useState<string | undefined>(
     debt?.walletId ?? openingTransaction?.walletId ?? wallets[0]?.id,
   );
@@ -54,16 +66,24 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
 
   const isSaving = createDebt.isPending || updateDebt.isPending || updateDebtOpening.isPending;
 
-  async function handleSave() {
-    const trimmedName = counterpartyName.trim();
-    if (!trimmedName) {
-      setError('Укажите контрагента');
-      return;
+  async function handleAddCounterparty() {
+    const trimmed = newCounterpartyName.trim();
+    if (!trimmed || !ownerId) return;
+    try {
+      const id = await createCounterparty.mutateAsync({ name: trimmed });
+      setCounterpartyId(id);
+      setNewCounterpartyName('');
+      setShowAddCounterparty(false);
+    } catch (err) {
+      console.error('Не удалось добавить контрагента', err);
+      setError(err instanceof Error ? err.message : 'Не удалось добавить контрагента');
     }
+  }
 
+  async function handleSave() {
     const numericPrincipal = Number(principal.replace(',', '.'));
-    if (!walletId || !numericPrincipal || numericPrincipal <= 0) {
-      setError('Укажите кошелёк и сумму');
+    if (!counterpartyId || !walletId || !numericPrincipal || numericPrincipal <= 0) {
+      setError('Укажите контрагента, кошелёк и сумму');
       return;
     }
 
@@ -73,7 +93,7 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
         await Promise.all([
           updateDebt.mutateAsync({
             id: debt!.id,
-            patch: { counterpartyName: trimmedName, counterpartyType, dueDate: dueDate || undefined },
+            patch: { counterpartyId, dueDate: dueDate || undefined },
           }),
           updateDebtOpening.mutateAsync({
             debt: debt!,
@@ -105,8 +125,7 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
         input: {
           walletId,
           direction,
-          counterpartyType,
-          counterpartyName: trimmedName,
+          counterpartyId,
           principal: numericPrincipal,
           dueDate: dueDate || undefined,
           date,
@@ -154,32 +173,47 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
         <div className="wallet-modal__section">
           <h3 className="section-title">Контрагент</h3>
           <div className="wallet-modal__chip-row">
-            <button
-              type="button"
-              className={`chip${counterpartyType === 'person' ? ' is-selected' : ''}`}
-              onClick={() => setCounterpartyType('person')}
-            >
-              🙂 Частное лицо
-            </button>
-            <button
-              type="button"
-              className={`chip${counterpartyType === 'bank' ? ' is-selected' : ''}`}
-              onClick={() => setCounterpartyType('bank')}
-            >
-              🏦 Банк
-            </button>
+            {(counterparties ?? []).map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`chip${counterpartyId === c.id ? ' is-selected' : ''}`}
+                style={{ ['--chip-accent' as string]: c.color ?? 'var(--accent)' }}
+                onClick={() => setCounterpartyId(c.id)}
+              >
+                {c.name}
+              </button>
+            ))}
+            {!showAddCounterparty && (
+              <button
+                type="button"
+                className="chip wallet-modal__add-chip"
+                onClick={() => setShowAddCounterparty(true)}
+              >
+                + Добавить
+              </button>
+            )}
           </div>
-        </div>
-
-        <div className="field">
-          <input
-            className="neo-input"
-            type="text"
-            placeholder={counterpartyType === 'bank' ? 'Название банка' : 'Имя'}
-            value={counterpartyName}
-            onChange={(e) => setCounterpartyName(e.target.value)}
-            autoFocus
-          />
+          {showAddCounterparty && (
+            <div className="wallet-modal__add-holder">
+              <input
+                className="neo-input"
+                type="text"
+                placeholder="Имя или организация"
+                value={newCounterpartyName}
+                onChange={(e) => setNewCounterpartyName(e.target.value)}
+                autoFocus
+              />
+              <button
+                type="button"
+                className="neo-button neo-button--sm"
+                onClick={handleAddCounterparty}
+                disabled={createCounterparty.isPending}
+              >
+                Добавить
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="wallet-modal__section">
