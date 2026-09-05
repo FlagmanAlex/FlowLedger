@@ -1,7 +1,16 @@
 import { addDoc, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import type { Debt } from '@flowledger/interfaces';
 import { debtsCollection } from './collections.js';
-import { createTransaction, deleteTransaction, listTransactions } from './transactions.repo.js';
+import { createTransaction, deleteTransaction, listTransactions, updateTransaction } from './transactions.repo.js';
+
+/** Открывающая операция долга (debt_lend/debt_borrow) — единственная
+ *  связанная транзакция, у которой type не debt_repayment. Нужна, чтобы
+ *  дать пользователю править сумму/кошелёк/дату/описание после создания
+ *  долга — сами эти поля хранятся не на Debt, а на транзакции. */
+export async function getDebtOpeningTransaction(userId: string, debtId: string) {
+  const linked = await listTransactions(userId, { debtId });
+  return linked.find((t) => t.type !== 'debt_repayment');
+}
 
 export async function listDebts(userId: string): Promise<Debt[]> {
   const snap = await getDocs(query(debtsCollection(), where('userId', '==', userId)));
@@ -62,14 +71,55 @@ export async function createDebt(
   return ref.id;
 }
 
-/** Правится только карточка долга (контрагент, срок) — сумма и остаток
- *  меняются исключительно через операции журнала (создание/погашение),
- *  не напрямую. */
+/** Правит карточку долга — контрагент, срок. Направление (lent/borrowed)
+ *  сюда не входит: поменять его значило бы перевернуть знак движения
+ *  кошелька у уже сделанных погашений (снимок debtDirection на каждой
+ *  из них), а не только у открывающей операции — для редкой опечатки
+ *  проще удалить долг и завести заново. Сумма/кошелёк/дата/описание
+ *  открывающей операции — через updateDebtOpening ниже, не здесь. */
 export async function updateDebt(
   id: string,
   patch: Partial<Pick<Debt, 'counterpartyName' | 'counterpartyType' | 'dueDate'>>,
 ): Promise<void> {
   await updateDoc(doc(debtsCollection(), id), patch);
+}
+
+export interface UpdateDebtOpeningInput {
+  walletId: string;
+  principal: number;
+  date: string;
+  description?: string;
+}
+
+/**
+ * Правит открывающую операцию долга (сумму/кошелёк/дату/описание) —
+ * через updateTransaction, ту же атомарную runTransaction, что и у любой
+ * другой операции: она уже сама пересчитывает и баланс кошелька(ов), и
+ * Debt.remainingAmount по дельте между старой и новой суммой (см.
+ * transactions.repo.ts). Debt.principal отдельным вызовом сдвигается на
+ * ту же дельту — remainingAmount транзакция поправила, а principal
+ * (используется в проценте прогресса) на ней не завязан.
+ */
+export async function updateDebtOpening(
+  debt: Debt,
+  openingTransactionId: string,
+  input: UpdateDebtOpeningInput,
+): Promise<void> {
+  const repaidSoFar = debt.principal - debt.remainingAmount;
+  if (input.principal < repaidSoFar) {
+    throw new Error(`Сумма не может быть меньше уже погашенной части (${repaidSoFar})`);
+  }
+
+  await updateTransaction(openingTransactionId, {
+    walletId: input.walletId,
+    amount: input.principal,
+    date: input.date,
+    description: input.description,
+  });
+
+  if (input.principal !== debt.principal) {
+    await updateDoc(doc(debtsCollection(), debt.id), { principal: input.principal });
+  }
 }
 
 export interface RepayDebtInput {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useDebts, useDeleteDebt, useHolders, useWallets } from '@flowledger/shared';
+import { useDebtOpeningTransaction, useDebts, useDeleteDebt, useHolders, useWallets } from '@flowledger/shared';
 import type { Debt } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -23,6 +23,7 @@ export function Debts() {
   const [repayingDebt, setRepayingDebt] = useState<Debt | null>(null);
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { data: editingOpeningTransaction } = useDebtOpeningTransaction(ownerId, editingDebt?.id);
 
   const activeWallets = (wallets ?? []).filter((w) => !w.archived);
   const all = debts ?? [];
@@ -160,15 +161,24 @@ export function Debts() {
         />
       )}
 
-      {editingDebt && (
+      {editingDebt && editingOpeningTransaction && (
         <DebtModal
           user={user}
           ownerId={ownerId}
-          wallets={activeWallets}
+          wallets={wallets ?? []}
           holders={holders}
           debt={editingDebt}
+          openingTransaction={editingOpeningTransaction}
           onClose={() => setEditingDebt(null)}
         />
+      )}
+
+      {editingDebt && !editingOpeningTransaction && (
+        <div className="modal-overlay" onClick={() => setEditingDebt(null)}>
+          <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="state-message">Загрузка...</p>
+          </div>
+        </div>
       )}
 
       {repayingDebt && (

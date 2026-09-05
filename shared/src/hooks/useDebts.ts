@@ -4,10 +4,13 @@ import {
   createDebt,
   type CreateDebtInput,
   deleteDebt,
+  getDebtOpeningTransaction,
   listDebts,
   repayDebt,
   type RepayDebtInput,
   updateDebt,
+  updateDebtOpening,
+  type UpdateDebtOpeningInput,
 } from '../repositories/debts.repo.js';
 
 function invalidateDebtsAndMoney(queryClient: ReturnType<typeof useQueryClient>) {
@@ -39,6 +42,32 @@ export function useUpdateDebt() {
     mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof updateDebt>[1] }) =>
       updateDebt(id, patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['debts'] }),
+  });
+}
+
+/** Открывающая операция долга — нужна DebtModal, чтобы дать редактировать
+ *  сумму/кошелёк/дату/описание после создания (см. updateDebtOpening). */
+export function useDebtOpeningTransaction(userId: string | undefined, debtId: string | undefined) {
+  return useQuery({
+    queryKey: ['debtOpeningTransaction', userId, debtId],
+    queryFn: () => getDebtOpeningTransaction(userId!, debtId!),
+    enabled: Boolean(userId) && Boolean(debtId),
+  });
+}
+
+export function useUpdateDebtOpening() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      debt,
+      openingTransactionId,
+      input,
+    }: {
+      debt: Debt;
+      openingTransactionId: string;
+      input: UpdateDebtOpeningInput;
+    }) => updateDebtOpening(debt, openingTransactionId, input),
+    onSuccess: () => invalidateDebtsAndMoney(queryClient),
   });
 }
 
