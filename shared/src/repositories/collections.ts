@@ -7,6 +7,7 @@ import {
 import type {
   Category,
   Currency,
+  Debt,
   Holder,
   Invite,
   Member,
@@ -42,6 +43,10 @@ export function currenciesCollection(): CollectionReference<Currency> {
 
 export function holdersCollection(): CollectionReference<Holder> {
   return collection(getFirestoreInstance(), 'holders').withConverter(converter<Holder>());
+}
+
+export function debtsCollection(): CollectionReference<Debt> {
+  return collection(getFirestoreInstance(), 'debts').withConverter(converter<Debt>());
 }
 
 export function invitesCollection(): CollectionReference<Invite> {

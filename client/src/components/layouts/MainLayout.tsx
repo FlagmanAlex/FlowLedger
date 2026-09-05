@@ -16,6 +16,7 @@ export interface MainOutletContext {
 const NAV_ITEMS = [
   { to: '/transactions', label: 'Журнал' },
   { to: '/wallets', label: 'Кошельки' },
+  { to: '/debts', label: 'Долги' },
   { to: '/categories', label: 'Категории' },
   { to: '/reports', label: 'Отчёты' },
   { to: '/settings', label: 'Настройки' },

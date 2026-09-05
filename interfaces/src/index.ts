@@ -8,3 +8,4 @@ export * from './category.interface.js';
 export * from './dashboard.interface.js';
 export * from './invite.interface.js';
 export * from './member.interface.js';
+export * from './debt.interface.js';

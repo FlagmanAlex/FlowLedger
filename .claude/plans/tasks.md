@@ -79,11 +79,21 @@
 
 ## Не реализовано / следующие шаги
 - [ ] `[interfaces, shared, client, mobile]` Экран «Долги» — учёт займов (кому дал в долг / у кого
-      взял, контрагент — частное лицо или банк), заводится по аналогии с кошельками
-      (владелец/holder, валюта). Идея пользователя 2026-09-05, план: `.claude/plans/debts.md`.
-      Решено: долг обязательно привязан к кошельку (сумма двигает баланс кошелька как обычная
-      операция), погашение — через общий журнал транзакций, без процентов/графика платежей на
-      первом этапе.
+      взял, контрагент — частное лицо или банк). Идея пользователя 2026-09-05, план:
+      `.claude/plans/debts.md`. `[interfaces, shared, client]` реализованы 2026-09-05: `Debt` +
+      расширенный `TransactionType` (`debt_lend`/`debt_borrow`/`debt_repayment`, поля
+      `debtId`/`debtDirection`), `debts.repo.ts`/`useDebts.ts`, атомарная синхронизация
+      `Debt.remainingAmount` с балансом кошелька в `transactions.repo.ts` (та же `runTransaction`,
+      что и раньше), `firestore.rules` (`debts` — тот же `hasAccess` паттерн), экран
+      `Debts.tsx`+`DebtModal.tsx`+`RepayDebtModal.tsx`, пункт меню/маршрут, отображение операций
+      долга в общем журнале (`Transactions.tsx`). Сборка (`npm run build:client`, т.е. `tsc -b` по
+      project references + `vite build`) и линт (`oxlint`) чистые. Архитектура — в `memory.md` →
+      «Долги». Не сделано:
+      - [ ] Живая проверка с реальным Firebase-логином (в песочнице сессии нет рабочего `.env`,
+            как и у прошлых visual-QA пунктов) — весь флоу: завести долг (дал/взял, банк/частное
+            лицо), частичное и полное погашение (авто-закрытие), отображение в журнале, удаление
+            долга с откатом баланса.
+      - [ ] `[mobile]` Перенос экрана «Долги» в Expo/RN — не начато, `shared`-слой общий.
 - [ ] `[interfaces, shared, client, mobile]` Бюджеты по категориям — сперва тип в `interfaces`,
       затем repository/hook в `shared`, затем UI в `client`/`mobile`. Главная premium-фича.
 - [ ] `[interfaces, shared, client, mobile]` Регулярные операции (`recurringTemplates` в модели

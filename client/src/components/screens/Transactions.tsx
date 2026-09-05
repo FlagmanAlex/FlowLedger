@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import { useCategories, useHolders, useTransactions, useWallets } from '@flowledger/shared';
+import { useCategories, useDebts, useHolders, useTransactions, useWallets } from '@flowledger/shared';
 import type { Transaction, TransactionType } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -39,11 +39,13 @@ export function Transactions() {
   const { data: wallets } = useWallets(ownerId);
   const { data: categories } = useCategories(ownerId);
   const { data: holders } = useHolders(ownerId);
+  const { data: debts } = useDebts(ownerId);
   const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId });
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
   const holderById = new Map((holders ?? []).map((h) => [h.id, h]));
+  const debtById = new Map((debts ?? []).map((d) => [d.id, d]));
   const walletNameCounts = new Map<string, number>();
   for (const w of wallets ?? []) {
     walletNameCounts.set(w.name, (walletNameCounts.get(w.name) ?? 0) + 1);
@@ -128,6 +130,39 @@ export function Transactions() {
                       {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
                     </div>
                   </button>
+                );
+              }
+
+              if (t.type === 'debt_lend' || t.type === 'debt_borrow' || t.type === 'debt_repayment') {
+                const debt = t.debtId ? debtById.get(t.debtId) : undefined;
+                const name = debt?.counterpartyName ?? 'Долг';
+                const title =
+                  t.type === 'debt_lend'
+                    ? `Выдача займа — ${name}`
+                    : t.type === 'debt_borrow'
+                      ? `Получение займа — ${name}`
+                      : t.debtDirection === 'lent'
+                        ? `Возврат долга — ${name}`
+                        : `Погашение долга — ${name}`;
+                const isPositive = t.type === 'debt_borrow' || (t.type === 'debt_repayment' && t.debtDirection === 'lent');
+                return (
+                  <div key={t.id} className="list-row">
+                    <IconCircle
+                      label={name}
+                      icon={debt?.counterpartyType === 'bank' ? '🏦' : '🤝'}
+                      color={debt ? colorForId(debt.id) : colorForId(t.walletId)}
+                      size={38}
+                    />
+                    <div className="list-row__main">
+                      <div className="list-row__title">{title}</div>
+                      <div className="list-row__subtitle">{walletLabel(t.walletId)}</div>
+                      {t.description && <div className="list-row__description">{t.description}</div>}
+                    </div>
+                    <div className={isPositive ? 'amount-positive' : 'amount-negative'}>
+                      {isPositive ? '+' : '−'}
+                      {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
+                    </div>
+                  </div>
                 );
               }
 

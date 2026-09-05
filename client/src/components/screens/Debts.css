@@ -1,0 +1,23 @@
+.debt-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+}
+
+.debt-card + .debt-card {
+  border-top: 1px solid var(--divider);
+}
+
+.debt-card__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.debt-card__actions .neo-button {
+  flex: 1;
+}
+
+.debts-closed .debt-card {
+  opacity: 0.6;
+}

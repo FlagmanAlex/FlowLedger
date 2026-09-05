@@ -58,7 +58,28 @@ FlowLedger — учёт доходов/расходов, продаётся ка
   Functions, Spark-план остаётся бесплатным для всех пользователей продукта — одно из требований,
   ради которых и произошёл реверт на единый проект).
 - **Формы через react-router-dom actions** (web) — не изменилось с MVP.
-- **Модель операций**: единый журнал, signed amount + `type: income|expense|transfer`.
+- **Модель операций**: единый журнал, signed amount + `type: income|expense|transfer|debt_lend|
+  debt_borrow|debt_repayment` (см. «Долги» ниже для последних трёх).
+- **Долги** (`interfaces/src/debt.interface.ts`, `shared/src/repositories/debts.repo.ts`) — учёт
+  займов физлицам/банкам, top-level коллекция `debts` (`hasAccess(userId)` в правилах, тот же
+  паттерн, что у wallets/categories/…). Долг обязательно привязан к кошельку (`Debt.walletId`) —
+  выдача/получение/погашение двигают его баланс как обычная операция, а не отдельный учёт в
+  стороне. Реализовано через три новых `TransactionType` с полем `debtId` (+ снимок
+  `debtDirection` на транзакции — знак движения по кошельку для `debt_repayment` иначе потребовал
+  бы читать сам `Debt` при каждом расчёте баланса): `debt_lend`/`debt_borrow` — открывающая
+  операция (выдача/получение суммы), `debt_repayment` — частичное или полное погашение (обычная
+  запись в общем журнале, не отдельная под-коллекция платежей). `Debt.remainingAmount` обновляется
+  той же атомарной `runTransaction` в `transactions.repo.ts`, что и `wallets.balance` (единая
+  функция `debtDeltas`, аналог `walletDeltas`) — `status` переключается в `'closed'` автоматически,
+  когда остаток доходит до 0. Создание долга (`createDebt` в `debts.repo.ts`) — два последовательных
+  вызова (создать документ `Debt` с `remainingAmount: 0`, затем `createTransaction` с `debtId`,
+  которая доводит остаток до `principal`), не единая Firestore-транзакция — сознательный компромисс
+  ради переиспользования одной и той же дельта-логики вместо дублирования в двух местах. Удаление
+  долга (`deleteDebt`) каскадно удаляет все его операции через `deleteTransaction` (баланс кошелька
+  откатывается тем же путём, что при обычном удалении операции), затем сам документ `Debt`. UI —
+  `client/src/components/screens/Debts.tsx` + `DebtModal.tsx`/`RepayDebtModal.tsx`, операции долга
+  также отображаются (нередактируемой строкой) в общем журнале (`Transactions.tsx`). Первая версия
+  — без процентов и графика платежей (см. `.claude/plans/debts.md`).
 - **Общий доступ по приглашению (family sharing)**, без Cloud Functions (Spark-план не трогаем):
   `userId` в wallets/categories/transactions/recurringTemplates остаётся id владельца базы
   («workspace»), а не обязательно того, кто сейчас с ней работает — `createdBy` в Transaction уже

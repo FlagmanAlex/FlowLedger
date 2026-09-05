@@ -1,4 +1,12 @@
-export type TransactionType = 'income' | 'expense' | 'transfer';
+import type { DebtDirection } from './debt.interface.js';
+
+export type TransactionType =
+  | 'income'
+  | 'expense'
+  | 'transfer'
+  | 'debt_lend' // выдача займа — деньги уходят из walletId, заводит Debt(direction='lent')
+  | 'debt_borrow' // получение займа — деньги приходят в walletId, заводит Debt(direction='borrowed')
+  | 'debt_repayment'; // погашение — знак движения по кошельку берётся из debtDirection
 
 export interface Transaction {
   id: string;
@@ -12,6 +20,12 @@ export interface Transaction {
   /** Комиссия банка в процентах — только для type 'transfer' между разными
    *  валютами, уменьшает итоговый курс зачисления. */
   commissionPercent?: number;
+  /** Долг, к которому относится операция — только для debt_lend/
+   *  debt_borrow/debt_repayment. */
+  debtId?: string;
+  /** Снимок Debt.direction на момент операции — нужен, чтобы знать знак
+   *  движения по кошельку для debt_repayment, не читая сам Debt. */
+  debtDirection?: DebtDirection;
   type: TransactionType;
   amount: number;
   description?: string;
