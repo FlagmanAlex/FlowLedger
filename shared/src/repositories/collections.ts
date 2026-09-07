@@ -6,7 +6,9 @@ import {
 } from 'firebase/firestore';
 import type {
   Category,
+  Counterparty,
   Currency,
+  Debt,
   Holder,
   Invite,
   Member,
@@ -42,6 +44,16 @@ export function currenciesCollection(): CollectionReference<Currency> {
 
 export function holdersCollection(): CollectionReference<Holder> {
   return collection(getFirestoreInstance(), 'holders').withConverter(converter<Holder>());
+}
+
+export function debtsCollection(): CollectionReference<Debt> {
+  return collection(getFirestoreInstance(), 'debts').withConverter(converter<Debt>());
+}
+
+export function counterpartiesCollection(): CollectionReference<Counterparty> {
+  return collection(getFirestoreInstance(), 'counterparties').withConverter(
+    converter<Counterparty>(),
+  );
 }
 
 export function invitesCollection(): CollectionReference<Invite> {

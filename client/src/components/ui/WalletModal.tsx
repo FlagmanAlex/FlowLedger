@@ -175,7 +175,7 @@ export function WalletModal({ ownerId, wallet, onClose }: WalletModalProps) {
                 key={h.id}
                 type="button"
                 className={`chip${holderId === h.id ? ' is-selected' : ''}`}
-                style={{ ['--chip-accent' as string]: h.color ?? '#7b61ff' }}
+                style={{ ['--chip-accent' as string]: h.color ?? 'var(--accent)' }}
                 onClick={() => setHolderId(holderId === h.id ? undefined : h.id)}
               >
                 {h.name}

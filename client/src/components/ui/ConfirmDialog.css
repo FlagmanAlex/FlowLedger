@@ -2,3 +2,12 @@
   display: flex;
   gap: var(--space-3);
 }
+
+/* .neo-button--full задаёт width: 100% — в горизонтальной flex-строке две
+ *  такие кнопки вместе требуют 200% ширины и вторая уезжает за пределы
+ *  экрана (flex-shrink: 0 у .neo-button не даёт им сжаться). Здесь ширина
+ *  должна делиться поровну через flex, а не задаваться в процентах. */
+.confirm-dialog__actions .neo-button {
+  flex: 1;
+  width: auto;
+}

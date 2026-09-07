@@ -6,6 +6,7 @@ import { Login } from '@/components/screens/Login';
 import { Dashboard } from '@/components/screens/Dashboard';
 import { Transactions } from '@/components/screens/Transactions';
 import { Wallets } from '@/components/screens/Wallets';
+import { Debts } from '@/components/screens/Debts';
 import { Categories } from '@/components/screens/Categories';
 import { Reports } from '@/components/screens/Reports';
 import { Settings } from '@/components/screens/Settings';
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: 'transactions', element: <Transactions /> },
           { path: 'wallets', element: <Wallets /> },
+          { path: 'debts', element: <Debts /> },
           { path: 'categories', element: <Categories /> },
           { path: 'reports', element: <Reports /> },
           { path: 'settings', element: <Settings /> },
