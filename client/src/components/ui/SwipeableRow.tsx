@@ -36,6 +36,12 @@ export function SwipeableRow({
   const translateX = dragX ?? (open ? -ACTION_WIDTH : 0);
 
   function handlePointerDown(e: React.PointerEvent) {
+    /* Кнопки внутри строки (например, шестерёнка редактирования) помечены
+     *  data-no-swipe — иначе setPointerCapture ниже перехватывает и click,
+     *  и он долетает до surface, а не до самой кнопки: клик по шестерёнке
+     *  срабатывал как клик по всей строке (открывал журнал вместо
+     *  редактирования). */
+    if ((e.target as HTMLElement).closest('[data-no-swipe]')) return;
     startX.current = e.clientX;
     startedOpen.current = open;
     wasDrag.current = false;

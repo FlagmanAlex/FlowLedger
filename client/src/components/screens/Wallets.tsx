@@ -56,6 +56,7 @@ export function Wallets() {
         <button
           type="button"
           className="wallet-row__gear"
+          data-no-swipe
           aria-label="Редактировать кошелёк"
           onClick={(e) => {
             e.stopPropagation();
