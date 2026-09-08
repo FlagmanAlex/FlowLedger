@@ -10,6 +10,7 @@ import type { Category, Transaction, TransactionType, Wallet } from '@flowledger
 import { IconCircle } from '@/components/ui/IconCircle';
 import { WalletPicker } from '@/components/ui/WalletPicker';
 import { colorForId } from '@/lib/palette';
+import { roundMoney } from '@/lib/format';
 import './AddTransactionModal.css';
 
 interface AddTransactionModalProps {
@@ -42,7 +43,7 @@ export function AddTransactionModal({
   const isEditing = Boolean(transaction);
 
   const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType);
-  const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
+  const [amount, setAmount] = useState(transaction ? String(roundMoney(transaction.amount)) : '');
   const [walletId, setWalletId] = useState<string | undefined>(transaction?.walletId ?? wallets[0]?.id);
   const [categoryId, setCategoryId] = useState<string | undefined>(transaction?.categoryId);
   const [description, setDescription] = useState(transaction?.description ?? '');

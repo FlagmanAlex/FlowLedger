@@ -38,3 +38,9 @@
 .transfer-modal__rate-row .field {
   flex: 1;
 }
+
+.transfer-modal__rate-label {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
