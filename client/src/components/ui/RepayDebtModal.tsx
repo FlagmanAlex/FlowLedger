@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRepayDebt, type UseAuthResult } from '@flowledger/shared';
 import type { Debt } from '@flowledger/interfaces';
-import { formatAmount } from '@/lib/format';
+import { formatAmount, roundMoney } from '@/lib/format';
 
 interface RepayDebtModalProps {
   user: UseAuthResult['user'];
@@ -18,7 +18,7 @@ function today(): string {
 
 export function RepayDebtModal({ user, ownerId, debt, counterpartyName, currency, onClose }: RepayDebtModalProps) {
   const repayDebt = useRepayDebt(ownerId);
-  const [amount, setAmount] = useState(String(debt.remainingAmount));
+  const [amount, setAmount] = useState(String(roundMoney(debt.remainingAmount)));
   const [date, setDate] = useState(today());
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);

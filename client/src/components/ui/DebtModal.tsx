@@ -9,6 +9,7 @@ import {
 } from '@flowledger/shared';
 import type { Debt, DebtDirection, Holder, Transaction, Wallet } from '@flowledger/interfaces';
 import { WalletPicker } from '@/components/ui/WalletPicker';
+import { roundMoney } from '@/lib/format';
 import './WalletModal.css';
 
 interface DebtModalProps {
@@ -58,7 +59,9 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
   const [walletId, setWalletId] = useState<string | undefined>(
     debt?.walletId ?? openingTransaction?.walletId ?? wallets[0]?.id,
   );
-  const [principal, setPrincipal] = useState(openingTransaction ? String(openingTransaction.amount) : '');
+  const [principal, setPrincipal] = useState(
+    openingTransaction ? String(roundMoney(openingTransaction.amount)) : '',
+  );
   const [dueDate, setDueDate] = useState(debt?.dueDate ?? '');
   const [description, setDescription] = useState(openingTransaction?.description ?? '');
   const [date, setDate] = useState(openingTransaction?.date ?? today());

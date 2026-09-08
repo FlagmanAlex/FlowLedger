@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useArchiveWallet, useHolders, useUpdateWallet, useWallets } from '@flowledger/shared';
 import type { Wallet } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
@@ -14,6 +14,7 @@ import { nextSortOrder } from '@/lib/reorder';
 import './forms.css';
 
 export function Wallets() {
+  const navigate = useNavigate();
   const { user, ownerId } = useOutletContext<MainOutletContext>();
   const { data: wallets, isLoading } = useWallets(ownerId);
   const { data: holders } = useHolders(ownerId);
@@ -40,7 +41,7 @@ export function Wallets() {
         actionLabel={actionLabel}
         actionVariant={actionVariant}
         onAction={onAction}
-        onClick={() => setEditingWallet(w)}
+        onClick={() => navigate(`/transactions?walletId=${w.id}`)}
         open={openWalletId === w.id}
         onOpenChange={(open) => setOpenWalletId(open ? w.id : null)}
       >
@@ -52,6 +53,18 @@ export function Wallets() {
         <span className="wallet-row__amount">
           {formatAmount(w.balance)} {w.currency}
         </span>
+        <button
+          type="button"
+          className="wallet-row__gear"
+          data-no-swipe
+          aria-label="Редактировать кошелёк"
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditingWallet(w);
+          }}
+        >
+          ⚙
+        </button>
         {handleProps && (
           <span className="reorder-handle" {...handleProps}>
             ⠿

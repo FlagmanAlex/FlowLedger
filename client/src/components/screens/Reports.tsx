@@ -14,7 +14,7 @@ import type { MonthlyTrendPoint } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { CategoryBar } from '@/components/ui/CategoryBar';
 import { colorForId } from '@/lib/palette';
-import { formatMonthShort } from '@/lib/format';
+import { formatAmount, formatMonthShort } from '@/lib/format';
 import './Reports.css';
 
 export function Reports() {
@@ -96,6 +96,7 @@ export function Reports() {
                   }}
                   labelStyle={{ color: 'var(--text-secondary)' }}
                   itemStyle={{ color: 'var(--text)' }}
+                  formatter={(value) => `${formatAmount(Number(value) || 0)} ${currency}`}
                 />
                 <Legend wrapperStyle={{ fontSize: 12, color: 'var(--text-secondary)' }} />
                 <Bar dataKey="income" name="Доход" fill="var(--positive)" radius={[4, 4, 0, 0]} />

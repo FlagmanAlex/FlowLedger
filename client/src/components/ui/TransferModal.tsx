@@ -8,7 +8,7 @@ import {
 } from '@flowledger/shared';
 import type { Transaction, Wallet } from '@flowledger/interfaces';
 import { WalletPicker } from '@/components/ui/WalletPicker';
-import { formatAmount } from '@/lib/format';
+import { formatAmount, roundMoney } from '@/lib/format';
 import './TransferModal.css';
 
 interface TransferModalProps {
@@ -40,8 +40,9 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
   const [toWalletId, setToWalletId] = useState<string | undefined>(
     transaction?.transferToWalletId ?? wallets.find((w) => w.id !== wallets[0]?.id)?.id,
   );
-  const [amount, setAmount] = useState(transaction ? String(transaction.amount) : '');
+  const [amount, setAmount] = useState(transaction ? String(roundMoney(transaction.amount)) : '');
   const [exchangeRateInput, setExchangeRateInput] = useState(String(transaction?.exchangeRate ?? 1));
+  const [rateDirection, setRateDirection] = useState<'from-to' | 'to-from'>('from-to');
   const [commissionInput, setCommissionInput] = useState(
     transaction?.commissionPercent ? String(transaction.commissionPercent) : '',
   );
@@ -54,7 +55,8 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
   const sameCurrency = Boolean(fromWallet && toWallet && fromWallet.currency === toWallet.currency);
 
   const numericAmount = toNumber(amount) || 0;
-  const rateValue = sameCurrency ? 1 : toNumber(exchangeRateInput) || 0;
+  const rawRateInput = toNumber(exchangeRateInput) || 0;
+  const rateValue = sameCurrency ? 1 : rateDirection === 'from-to' ? rawRateInput : rawRateInput > 0 ? 1 / rawRateInput : 0;
   const commissionValue = sameCurrency ? 0 : toNumber(commissionInput || '0') || 0;
   const effectiveRate = rateValue * (1 - commissionValue / 100);
   const creditedAmount = numericAmount * effectiveRate;
@@ -94,6 +96,17 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
       console.error('Не удалось сохранить перевод', err);
       setError(err instanceof Error ? err.message : 'Не удалось сохранить перевод');
     }
+  }
+
+  /** Клик по строке «1 X = ? Y» переключает направление курса на «1 Y = ? X» —
+   *  введённое значение пересчитывается в обратное, чтобы не терять то, что
+   *  уже набрано. */
+  function toggleRateDirection() {
+    const current = toNumber(exchangeRateInput);
+    if (current > 0) {
+      setExchangeRateInput(String(Number((1 / current).toFixed(6))));
+    }
+    setRateDirection((prev) => (prev === 'from-to' ? 'to-from' : 'from-to'));
   }
 
   async function handleDelete() {
@@ -151,8 +164,14 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
         {!sameCurrency && fromWallet && toWallet && (
           <div className="transfer-modal__rate-row">
             <div className="field">
-              <label className="section-title" htmlFor="transfer-rate">
-                1 {fromWallet.currency} = ? {toWallet.currency}
+              <label
+                className="section-title transfer-modal__rate-label"
+                htmlFor="transfer-rate"
+                onClick={toggleRateDirection}
+              >
+                {rateDirection === 'from-to'
+                  ? `1 ${fromWallet.currency} = ? ${toWallet.currency}`
+                  : `1 ${toWallet.currency} = ? ${fromWallet.currency}`}
               </label>
               <input
                 id="transfer-rate"

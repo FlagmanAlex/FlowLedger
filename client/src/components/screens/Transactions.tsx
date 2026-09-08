@@ -29,6 +29,7 @@ export function Transactions() {
   const { user, ownerId } = useOutletContext<MainOutletContext>();
   const [searchParams] = useSearchParams();
   const categoryId = searchParams.get('categoryId') ?? undefined;
+  const walletId = searchParams.get('walletId') ?? undefined;
 
   const [filter, setFilter] = useState<TxFilter>('all');
   const [showAdd, setShowAdd] = useState(false);
@@ -41,7 +42,7 @@ export function Transactions() {
   const { data: holders } = useHolders(ownerId);
   const { data: debts } = useDebts(ownerId);
   const { data: counterparties } = useCounterparties(ownerId);
-  const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId });
+  const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId, walletId });
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
@@ -90,14 +91,14 @@ export function Transactions() {
           className={`segmented__item${filter === 'income' ? ' is-active' : ''}`}
           onClick={() => setFilter('income')}
         >
-          Доходы
+          Приход
         </button>
         <button
           type="button"
           className={`segmented__item${filter === 'expense' ? ' is-active' : ''}`}
           onClick={() => setFilter('expense')}
         >
-          Расходы
+          Расход
         </button>
       </div>
 

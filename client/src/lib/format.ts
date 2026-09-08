@@ -6,6 +6,13 @@ export function formatAmount(value: number): string {
   }).format(value);
 }
 
+/** Округляет денежную сумму до 2 знаков после запятой — защита от плавающей
+ *  погрешности (0.1 + 0.2 и т.п.), когда сырое число из Firestore подставляется
+ *  как начальное значение редактируемого поля ввода. */
+export function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 export function formatMonthShort(month: string): string {
   const [year, m] = month.split('-').map(Number);
   return new Date(year, m - 1, 1).toLocaleDateString('ru-RU', { month: 'short' });
