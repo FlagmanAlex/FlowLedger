@@ -24,6 +24,12 @@
   white-space: nowrap;
 }
 
+.wallet-row__actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .wallet-row__gear {
   display: flex;
   align-items: center;

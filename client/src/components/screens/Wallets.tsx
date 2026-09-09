@@ -53,23 +53,25 @@ export function Wallets() {
         <span className="wallet-row__amount">
           {formatAmount(w.balance)} {w.currency}
         </span>
-        <button
-          type="button"
-          className="wallet-row__gear"
-          data-no-swipe
-          aria-label="Редактировать кошелёк"
-          onClick={(e) => {
-            e.stopPropagation();
-            setEditingWallet(w);
-          }}
-        >
-          ⚙
-        </button>
-        {handleProps && (
-          <span className="reorder-handle" {...handleProps}>
-            ⠿
-          </span>
-        )}
+        <span className="wallet-row__actions">
+          <button
+            type="button"
+            className="wallet-row__gear"
+            data-no-swipe
+            aria-label="Редактировать кошелёк"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingWallet(w);
+            }}
+          >
+            ⚙
+          </button>
+          {handleProps && (
+            <span className="reorder-handle" {...handleProps}>
+              ⠿
+            </span>
+          )}
+        </span>
       </SwipeableRow>
     );
   }
