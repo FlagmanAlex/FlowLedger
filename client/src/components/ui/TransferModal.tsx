@@ -43,8 +43,10 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
   const [amount, setAmount] = useState(transaction ? String(roundMoney(transaction.amount)) : '');
   const [exchangeRateInput, setExchangeRateInput] = useState(String(transaction?.exchangeRate ?? 1));
   const [rateDirection, setRateDirection] = useState<'from-to' | 'to-from'>('from-to');
-  const [commissionInput, setCommissionInput] = useState(
-    transaction?.commissionPercent ? String(transaction.commissionPercent) : '',
+  const [commissionAmountInput, setCommissionAmountInput] = useState(
+    transaction?.commissionPercent
+      ? String(roundMoney((transaction.commissionPercent / 100) * transaction.amount))
+      : '',
   );
   const [description, setDescription] = useState(transaction?.description ?? '');
   const [date, setDate] = useState(transaction?.date ?? today());
@@ -57,8 +59,9 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
   const numericAmount = toNumber(amount) || 0;
   const rawRateInput = toNumber(exchangeRateInput) || 0;
   const rateValue = sameCurrency ? 1 : rateDirection === 'from-to' ? rawRateInput : rawRateInput > 0 ? 1 / rawRateInput : 0;
-  const commissionValue = sameCurrency ? 0 : toNumber(commissionInput || '0') || 0;
-  const effectiveRate = rateValue * (1 - commissionValue / 100);
+  const commissionAmountValue = toNumber(commissionAmountInput || '0') || 0;
+  const commissionPercentValue = numericAmount > 0 ? (commissionAmountValue / numericAmount) * 100 : 0;
+  const effectiveRate = rateValue * (1 - commissionPercentValue / 100);
   const creditedAmount = numericAmount * effectiveRate;
 
   const isSaving = createTransaction.isPending || updateTransaction.isPending;
@@ -80,7 +83,7 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
       type: 'transfer' as const,
       amount: numericAmount,
       exchangeRate: rateValue,
-      commissionPercent: sameCurrency ? undefined : commissionValue || undefined,
+      commissionPercent: commissionPercentValue || undefined,
       description: description || undefined,
       date,
     };
@@ -161,31 +164,33 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
           />
         </div>
 
-        {!sameCurrency && fromWallet && toWallet && (
+        {fromWallet && toWallet && (
           <div className="transfer-modal__rate-row">
-            <div className="field">
-              <label
-                className="section-title transfer-modal__rate-label"
-                htmlFor="transfer-rate"
-                onClick={toggleRateDirection}
-              >
-                {rateDirection === 'from-to'
-                  ? `1 ${fromWallet.currency} = ? ${toWallet.currency}`
-                  : `1 ${toWallet.currency} = ? ${fromWallet.currency}`}
-              </label>
-              <input
-                id="transfer-rate"
-                className="neo-input"
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={exchangeRateInput}
-                onChange={(e) => setExchangeRateInput(e.target.value.replace(/[^0-9,.]/g, ''))}
-              />
-            </div>
+            {!sameCurrency && (
+              <div className="field">
+                <label
+                  className="section-title transfer-modal__rate-label"
+                  htmlFor="transfer-rate"
+                  onClick={toggleRateDirection}
+                >
+                  {rateDirection === 'from-to'
+                    ? `1 ${fromWallet.currency} = ? ${toWallet.currency}`
+                    : `1 ${toWallet.currency} = ? ${fromWallet.currency}`}
+                </label>
+                <input
+                  id="transfer-rate"
+                  className="neo-input"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={exchangeRateInput}
+                  onChange={(e) => setExchangeRateInput(e.target.value.replace(/[^0-9,.]/g, ''))}
+                />
+              </div>
+            )}
             <div className="field">
               <label className="section-title" htmlFor="transfer-commission">
-                Комиссия банка, %
+                Комиссия банка, {fromWallet.currency}
               </label>
               <input
                 id="transfer-commission"
@@ -193,9 +198,14 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
                 type="text"
                 inputMode="decimal"
                 placeholder="0"
-                value={commissionInput}
-                onChange={(e) => setCommissionInput(e.target.value.replace(/[^0-9,.]/g, ''))}
+                value={commissionAmountInput}
+                onChange={(e) => setCommissionAmountInput(e.target.value.replace(/[^0-9,.]/g, ''))}
               />
+              {commissionAmountValue > 0 && numericAmount > 0 && (
+                <span className="transfer-modal__commission-hint">
+                  ≈ {formatAmount(commissionPercentValue)}%
+                </span>
+              )}
             </div>
           </div>
         )}
