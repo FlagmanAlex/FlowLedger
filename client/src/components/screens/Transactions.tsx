@@ -112,6 +112,15 @@ export function Transactions() {
               const wallet = walletById.get(t.walletId);
 
               if (t.type === 'transfer') {
+                /* На странице кошелька-получателя показываем сумму зачисления в его
+                 *  валюте (после курса и комиссии), а не списанную сумму в валюте
+                 *  источника — иначе на другой стороне перевода цифры не сходятся
+                 *  с тем, что реально пришло на этот кошелёк. */
+                const showingDestination = Boolean(walletId) && walletId === t.transferToWalletId && walletId !== t.walletId;
+                const toWallet = t.transferToWalletId ? walletById.get(t.transferToWalletId) : undefined;
+                const effectiveRate = (t.exchangeRate ?? 1) * (1 - (t.commissionPercent ?? 0) / 100);
+                const displayAmount = showingDestination ? Math.abs(t.amount) * effectiveRate : Math.abs(t.amount);
+                const displayCurrency = showingDestination ? toWallet?.currency : wallet?.currency;
                 return (
                   <button
                     key={t.id}
@@ -130,7 +139,7 @@ export function Transactions() {
                       )}
                     </div>
                     <div className="amount-neutral">
-                      {formatAmount(Math.abs(t.amount))} {wallet?.currency ?? ''}
+                      {formatAmount(displayAmount)} {displayCurrency ?? ''}
                     </div>
                   </button>
                 );
