@@ -188,6 +188,7 @@ export function Transactions() {
                 >
                   <IconCircle
                     label={category?.name ?? '·'}
+                    icon={category?.icon}
                     color={category ? category.color ?? colorForId(category.id) : colorForId(t.walletId)}
                     size={38}
                   />

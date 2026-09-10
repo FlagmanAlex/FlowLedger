@@ -217,6 +217,7 @@ export function Dashboard() {
               >
                 <CategoryBar
                   name={categoryById.get(c.categoryId)?.name ?? 'Без категории'}
+                  icon={categoryById.get(c.categoryId)?.icon}
                   amount={c.total}
                   currency={MAIN_CURRENCY}
                   percent={(c.total / (monthExpenseTotal || 1)) * 100}
@@ -242,6 +243,7 @@ export function Dashboard() {
               >
                 <CategoryBar
                   name={categoryById.get(c.categoryId)?.name ?? 'Без категории'}
+                  icon={categoryById.get(c.categoryId)?.icon}
                   amount={c.total}
                   currency={MAIN_CURRENCY}
                   percent={(c.total / (monthIncomeTotal || 1)) * 100}
@@ -296,6 +298,7 @@ export function Dashboard() {
               <div key={t.id} className="list-row">
                 <IconCircle
                   label={isTransfer ? '⇄' : category?.name ?? '·'}
+                  icon={isTransfer ? undefined : category?.icon}
                   color={category ? category.color ?? colorForId(category.id) : colorForId(t.walletId)}
                   size={36}
                 />

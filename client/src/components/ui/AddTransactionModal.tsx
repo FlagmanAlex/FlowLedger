@@ -170,7 +170,7 @@ export function AddTransactionModal({
                 className={`add-tx__category-cell${categoryId === c.id ? ' is-selected' : ''}`}
                 onClick={() => setCategoryId(c.id)}
               >
-                <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={32} fontSize={13} />
+                <IconCircle label={c.name} icon={c.icon} color={c.color ?? colorForId(c.id)} size={32} fontSize={13} />
                 <span>{c.name}</span>
               </button>
             ))}
