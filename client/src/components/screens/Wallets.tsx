@@ -53,10 +53,10 @@ export function Wallets() {
         <span className="wallet-row__amount">
           {formatAmount(w.balance)} {w.currency}
         </span>
-        <span className="wallet-row__actions">
+        <span className="list-row__actions">
           <button
             type="button"
-            className="wallet-row__gear"
+            className="list-row__gear"
             data-no-swipe
             aria-label="Редактировать кошелёк"
             onClick={(e) => {

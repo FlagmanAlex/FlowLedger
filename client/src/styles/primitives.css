@@ -312,6 +312,36 @@ textarea.neo-input {
   flex-shrink: 0;
 }
 
+/** Шестерёнка редактирования + ручка перетаскивания (см. ReorderableList) —
+ *  сгруппированы в один flex-контейнер без внутреннего отступа, чтобы не
+ *  съедать общий gap строки дважды (см. историю правки в Wallets). */
+.list-row__actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.list-row__gear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin: -4px 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--fs-19);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.list-row__gear:active {
+  color: var(--text);
+}
+
 /* ---------- Текстовые утилиты ---------- */
 
 .card-link {
