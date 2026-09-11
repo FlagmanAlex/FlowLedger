@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { useCategories, useDashboard, useTransactions, useWallets } from '@flowledger/shared';
+import {
+  useCategories,
+  useCounterparties,
+  useDashboard,
+  useDebts,
+  useTransactions,
+  useWallets,
+} from '@flowledger/shared';
 import type { MonthlyTrendPoint } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -40,6 +47,8 @@ export function Dashboard() {
   const { summary, isLoading, error } = useDashboard(ownerId);
   const { data: wallets } = useWallets(ownerId);
   const { data: categories } = useCategories(ownerId);
+  const { data: debts } = useDebts(ownerId);
+  const { data: counterparties } = useCounterparties(ownerId);
   const { data: recentTransactions } = useTransactions(ownerId, { limit: 4 });
 
   const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date()));
@@ -64,9 +73,9 @@ export function Dashboard() {
     );
   }
 
-  const walletColorById = new Map((wallets ?? []).map((w) => [w.id, w.color ?? colorForId(w.id)]));
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
+  const counterpartyById = new Map((counterparties ?? []).map((c) => [c.id, c]));
 
   const trendByCurrency = new Map<string, MonthlyTrendPoint[]>();
   for (const p of summary.monthlyTrend) {
@@ -115,6 +124,35 @@ export function Dashboard() {
   const monthExpenseList = toSortedTotals(monthExpenseByCategory);
   const monthIncomeList = toSortedTotals(monthIncomeByCategory);
 
+  /** Долги на дашборде — одна строка на контрагента (сумма нетто: что он
+   *  должен мне минус что я должен ему), а не строка на каждый Debt, как на
+   *  экране «Долги» — там детализация уместна, здесь нужен обзор. Валюта
+   *  долга берётся из его кошелька (см. Debt.walletId) и нетто считается
+   *  раздельно по валютам, чтобы не смешивать суммы в разных деньгах. */
+  const activeDebts = (debts ?? []).filter((d) => d.status === 'active');
+  const debtNetByKey = new Map<string, { counterpartyId: string; currency: string; net: number }>();
+  const lentTotalByCurrency = new Map<string, number>();
+  const borrowedTotalByCurrency = new Map<string, number>();
+  for (const d of activeDebts) {
+    const currency = walletById.get(d.walletId)?.currency ?? '';
+    const key = `${d.counterpartyId}__${currency}`;
+    const signed = d.direction === 'lent' ? d.remainingAmount : -d.remainingAmount;
+    const existing = debtNetByKey.get(key);
+    if (existing) {
+      existing.net += signed;
+    } else {
+      debtNetByKey.set(key, { counterpartyId: d.counterpartyId, currency, net: signed });
+    }
+    if (d.direction === 'lent') {
+      lentTotalByCurrency.set(currency, (lentTotalByCurrency.get(currency) ?? 0) + d.remainingAmount);
+    } else {
+      borrowedTotalByCurrency.set(currency, (borrowedTotalByCurrency.get(currency) ?? 0) + d.remainingAmount);
+    }
+  }
+  const debtRows = Array.from(debtNetByKey.values())
+    .filter((r) => r.net !== 0)
+    .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+
   return (
     <div className="page">
       <div className="dashboard-header">
@@ -153,22 +191,59 @@ export function Dashboard() {
         )}
       </section>
 
-      {summary.wallets.length > 0 && (
-        <div className="wallets-row">
-          {summary.wallets.map((w) => (
-            <Link key={w.walletId} to="/wallets" className="card-link neo-card--sm wallet-card">
-              <div
-                className="wallet-bar"
-                style={{ background: walletColorById.get(w.walletId) ?? colorForId(w.walletId) }}
-              />
-              <div className="wallet-name">{w.walletName}</div>
-              <div className="wallet-balance">
-                {formatAmount(w.balance)} {w.currency}
-              </div>
-            </Link>
-          ))}
+      <section className="neo-card">
+        <div className="recent-header">
+          <h2 className="section-title" style={{ margin: 0 }}>
+            Долги по контрагентам
+          </h2>
+          <Link to="/debts" className="recent-link">
+            Все →
+          </Link>
         </div>
-      )}
+        {debtRows.length === 0 ? (
+          <p className="state-message">Активных долгов нет</p>
+        ) : (
+          debtRows.map((r) => (
+            <div key={`${r.counterpartyId}-${r.currency}`} className="list-row">
+              <IconCircle
+                label={counterpartyById.get(r.counterpartyId)?.name ?? '?'}
+                icon="🤝"
+                color={counterpartyById.get(r.counterpartyId)?.color ?? colorForId(r.counterpartyId)}
+                size={36}
+              />
+              <div className="list-row__main">
+                <div className="list-row__title">
+                  {counterpartyById.get(r.counterpartyId)?.name ?? 'Без контрагента'}
+                </div>
+                <div className="list-row__subtitle">{r.net > 0 ? 'Мне должны' : 'Я должен'}</div>
+              </div>
+              <span className={r.net > 0 ? 'amount-positive' : 'amount-negative'}>
+                {formatAmount(Math.abs(r.net))} {r.currency}
+              </span>
+            </div>
+          ))
+        )}
+        {(lentTotalByCurrency.size > 0 || borrowedTotalByCurrency.size > 0) && (
+          <div className="dashboard-month-totals">
+            {Array.from(lentTotalByCurrency.entries()).map(([currency, total]) => (
+              <div key={`lent-${currency}`} className="dashboard-month-totals__item">
+                <span className="dashboard-month-totals__label">Мне должны</span>
+                <span className="dashboard-month-totals__value amount-positive">
+                  +{formatAmount(total)} {currency}
+                </span>
+              </div>
+            ))}
+            {Array.from(borrowedTotalByCurrency.entries()).map(([currency, total]) => (
+              <div key={`borrowed-${currency}`} className="dashboard-month-totals__item">
+                <span className="dashboard-month-totals__label">Я должен</span>
+                <span className="dashboard-month-totals__value amount-negative">
+                  −{formatAmount(total)} {currency}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="neo-card">
         <div className="dashboard-month-summary__header">
