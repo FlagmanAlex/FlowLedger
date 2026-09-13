@@ -116,6 +116,7 @@ export function Reports() {
               <CategoryBar
                 key={`${c.categoryId}-${c.currency}`}
                 name={c.categoryName}
+                icon={categoryById.get(c.categoryId)?.icon}
                 amount={c.total}
                 currency={c.currency}
                 percent={(c.total / (expenseTotalByCurrency.get(c.currency) || 1)) * 100}
@@ -133,6 +134,7 @@ export function Reports() {
               <CategoryBar
                 key={`${c.categoryId}-${c.currency}`}
                 name={c.categoryName}
+                icon={categoryById.get(c.categoryId)?.icon}
                 amount={c.total}
                 currency={c.currency}
                 percent={(c.total / (incomeTotalByCurrency.get(c.currency) || 1)) * 100}

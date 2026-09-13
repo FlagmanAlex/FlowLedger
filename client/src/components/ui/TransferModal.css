@@ -44,3 +44,8 @@
   user-select: none;
   -webkit-user-select: none;
 }
+
+.transfer-modal__commission-hint {
+  font-size: var(--fs-12);
+  color: var(--text-secondary);
+}

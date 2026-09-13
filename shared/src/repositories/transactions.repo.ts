@@ -6,6 +6,7 @@ import {
   limit as fsLimit,
   orderBy,
   query,
+  type QueryFieldFilterConstraint,
   runTransaction,
   type Transaction as FirestoreWriteTransaction,
   where,
@@ -28,26 +29,49 @@ export interface TransactionFilters {
   limit?: number;
 }
 
+async function runTransactionsQuery(
+  clauses: QueryFieldFilterConstraint[],
+  limitValue: number,
+): Promise<Transaction[]> {
+  const q = query(transactionsCollection(), ...clauses, orderBy('date', 'desc'), fsLimit(limitValue));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data());
+}
+
 export async function listTransactions(
   userId: string,
   filters: TransactionFilters = {},
 ): Promise<Transaction[]> {
-  const clauses = [where('userId', '==', userId)];
-  if (filters.walletId) clauses.push(where('walletId', '==', filters.walletId));
-  if (filters.categoryId) clauses.push(where('categoryId', '==', filters.categoryId));
-  if (filters.type) clauses.push(where('type', '==', filters.type));
-  if (filters.debtId) clauses.push(where('debtId', '==', filters.debtId));
-  if (filters.dateFrom) clauses.push(where('date', '>=', filters.dateFrom));
-  if (filters.dateTo) clauses.push(where('date', '<', filters.dateTo));
+  const baseClauses = [where('userId', '==', userId)];
+  if (filters.categoryId) baseClauses.push(where('categoryId', '==', filters.categoryId));
+  if (filters.type) baseClauses.push(where('type', '==', filters.type));
+  if (filters.debtId) baseClauses.push(where('debtId', '==', filters.debtId));
+  if (filters.dateFrom) baseClauses.push(where('date', '>=', filters.dateFrom));
+  if (filters.dateTo) baseClauses.push(where('date', '<', filters.dateTo));
+  const limitValue = filters.limit ?? 100;
 
-  const q = query(
-    transactionsCollection(),
-    ...clauses,
-    orderBy('date', 'desc'),
-    fsLimit(filters.limit ?? 100),
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data());
+  if (!filters.walletId) {
+    return runTransactionsQuery(baseClauses, limitValue);
+  }
+
+  /* История кошелька должна показывать и списания (walletId), и приход по
+   *  переводу С ДРУГОГО кошелька (transferToWalletId) — иначе перевод виден
+   *  только на кошельке-источнике. Firestore не умеет OR по двум полям в
+   *  одном where, поэтому это два отдельных запроса, смерженных на клиенте.
+   *  Кошелёк-получатель встречается только у type='transfer', остальные
+   *  фильтры (категория, долг) у переводов не заполняются — в этих случаях
+   *  второй запрос заведомо пуст, не гоняем его зря. */
+  const canBeDestination = !filters.categoryId && !filters.debtId && (!filters.type || filters.type === 'transfer');
+  const [asSource, asDestination] = await Promise.all([
+    runTransactionsQuery([...baseClauses, where('walletId', '==', filters.walletId)], limitValue),
+    canBeDestination
+      ? runTransactionsQuery([...baseClauses, where('transferToWalletId', '==', filters.walletId)], limitValue)
+      : Promise.resolve([]),
+  ]);
+
+  return [...asSource, ...asDestination]
+    .sort((a, b) => (a.date === b.date ? (a.createdAt < b.createdAt ? 1 : -1) : a.date < b.date ? 1 : -1))
+    .slice(0, limitValue);
 }
 
 function signedAmount(type: Transaction['type'], amount: number): number {

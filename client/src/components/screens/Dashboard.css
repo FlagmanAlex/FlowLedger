@@ -57,37 +57,6 @@
   color: var(--negative);
 }
 
-.wallets-row {
-  display: flex;
-  gap: var(--space-3);
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-.wallet-card {
-  flex-shrink: 0;
-  width: 132px;
-}
-
-.wallet-bar {
-  width: 22px;
-  height: 4px;
-  border-radius: 2px;
-}
-
-.wallet-name {
-  margin-top: var(--space-3);
-  font-size: var(--fs-12);
-  color: var(--text-secondary);
-}
-
-.wallet-balance {
-  margin-top: var(--space-1);
-  font-size: var(--fs-15);
-  font-weight: var(--fw-bold);
-  color: var(--text);
-}
-
 .dashboard-month-summary__header {
   display: flex;
   align-items: center;

@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   useCategories,
   useCreateCategory,
-  useDeleteCategory,
   useUpdateCategory,
   categoryFormSchema,
   type CategoryFormValues,
@@ -13,19 +12,19 @@ import {
 import type { Category } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { ReorderableList } from '@/components/ui/ReorderableList';
+import { CategoryModal } from '@/components/ui/CategoryModal';
+import { ReorderableList, type DragHandleProps } from '@/components/ui/ReorderableList';
 import { colorForId } from '@/lib/palette';
 import { nextSortOrder } from '@/lib/reorder';
 import './forms.css';
 
 export function Categories() {
+  const navigate = useNavigate();
   const { ownerId } = useOutletContext<MainOutletContext>();
   const { data: categories, isLoading } = useCategories(ownerId);
   const createCategory = useCreateCategory(ownerId);
   const updateCategory = useUpdateCategory();
-  const deleteCategory = useDeleteCategory();
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const expenseCategories = categories?.filter((c) => c.type === 'expense') ?? [];
   const incomeCategories = categories?.filter((c) => c.type === 'income') ?? [];
@@ -48,6 +47,33 @@ export function Categories() {
     if (!ownerId) return;
     await createCategory.mutateAsync(values);
     reset();
+  }
+
+  function categoryRow(c: Category, handleProps: DragHandleProps) {
+    return (
+      <div className="list-row list-row--clickable" onClick={() => navigate(`/transactions?categoryId=${c.id}`)}>
+        <IconCircle label={c.name} icon={c.icon} color={c.color ?? colorForId(c.id)} size={36} />
+        <div className="list-row__main">
+          <div className="list-row__title">{c.name}</div>
+        </div>
+        <span className="list-row__actions">
+          <button
+            type="button"
+            className="list-row__gear"
+            aria-label="Редактировать категорию"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingCategory(c);
+            }}
+          >
+            ⚙
+          </button>
+          <span className="reorder-handle" {...handleProps}>
+            ⠿
+          </span>
+        </span>
+      </div>
+    );
   }
 
   return (
@@ -86,24 +112,7 @@ export function Categories() {
           items={expenseCategories}
           getId={(c) => c.id}
           onReorder={handleReorder(expenseCategories)}
-          renderItem={(c, _dragging, handleProps) => (
-            <div className="list-row">
-              <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={36} />
-              <div className="list-row__main">
-                <div className="list-row__title">{c.name}</div>
-              </div>
-              <button
-                type="button"
-                className="neo-button neo-button--sm"
-                onClick={() => setCategoryToDelete(c)}
-              >
-                Удалить
-              </button>
-              <span className="reorder-handle" {...handleProps}>
-                ⠿
-              </span>
-            </div>
-          )}
+          renderItem={(c, _dragging, handleProps) => categoryRow(c, handleProps)}
         />
       </section>
 
@@ -113,37 +122,12 @@ export function Categories() {
           items={incomeCategories}
           getId={(c) => c.id}
           onReorder={handleReorder(incomeCategories)}
-          renderItem={(c, _dragging, handleProps) => (
-            <div className="list-row">
-              <IconCircle label={c.name} color={c.color ?? colorForId(c.id)} size={36} />
-              <div className="list-row__main">
-                <div className="list-row__title">{c.name}</div>
-              </div>
-              <button
-                type="button"
-                className="neo-button neo-button--sm"
-                onClick={() => setCategoryToDelete(c)}
-              >
-                Удалить
-              </button>
-              <span className="reorder-handle" {...handleProps}>
-                ⠿
-              </span>
-            </div>
-          )}
+          renderItem={(c, _dragging, handleProps) => categoryRow(c, handleProps)}
         />
       </section>
 
-      {categoryToDelete && (
-        <ConfirmDialog
-          title="Удалить категорию?"
-          message={`«${categoryToDelete.name}» пропадёт из списка категорий. Уже сохранённые операции с этой категорией останутся — в них категория будет показана как «Без категории».`}
-          onCancel={() => setCategoryToDelete(null)}
-          onConfirm={() => {
-            deleteCategory.mutate(categoryToDelete.id);
-            setCategoryToDelete(null);
-          }}
-        />
+      {editingCategory && (
+        <CategoryModal ownerId={ownerId} category={editingCategory} onClose={() => setEditingCategory(null)} />
       )}
     </div>
   );
