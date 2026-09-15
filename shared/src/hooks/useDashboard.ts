@@ -15,8 +15,17 @@ import { listCategories } from '../repositories/categories.repo.js';
  * без курсов конвертации (не входит в эту функцию), поэтому баланс,
  * категории и тренд по месяцам считаются отдельно на каждую валюту.
  */
-export function useDashboard(userId: string | undefined) {
+export interface UseDashboardOptions {
+  /** Ограничить агрегаты подмножеством кошельков (например, кошельками
+   *  одного держателя) — undefined/не задано значит «все кошельки», как
+   *  раньше. Фильтрация — на уже загруженных данных, без отдельного
+   *  запроса к Firestore. */
+  walletIds?: string[];
+}
+
+export function useDashboard(userId: string | undefined, options: UseDashboardOptions = {}) {
   const enabled = Boolean(userId);
+  const walletIdFilter = options.walletIds ? new Set(options.walletIds) : undefined;
 
   const walletsQuery = useQuery({
     queryKey: ['wallets', userId],
@@ -37,11 +46,16 @@ export function useDashboard(userId: string | undefined) {
   const summary = useMemo<DashboardSummary | undefined>(() => {
     if (!walletsQuery.data || !categoriesQuery.data || !transactionsQuery.data) return undefined;
 
+    const wallets = walletIdFilter ? walletsQuery.data.filter((w) => walletIdFilter.has(w.id)) : walletsQuery.data;
+    const transactions = walletIdFilter
+      ? transactionsQuery.data.filter((tx) => walletIdFilter.has(tx.walletId))
+      : transactionsQuery.data;
+
     const categoryNameById = new Map(categoriesQuery.data.map((c) => [c.id, c.name]));
-    const walletById = new Map(walletsQuery.data.map((w) => [w.id, w]));
+    const walletById = new Map(wallets.map((w) => [w.id, w]));
 
     const balanceByCurrency = new Map<string, number>();
-    for (const w of walletsQuery.data) {
+    for (const w of wallets) {
       balanceByCurrency.set(w.currency, (balanceByCurrency.get(w.currency) ?? 0) + w.balance);
     }
 
@@ -49,7 +63,7 @@ export function useDashboard(userId: string | undefined) {
     const incomeByCategory = new Map<string, number>();
     const monthlyTrend = new Map<string, { month: string; currency: string; income: number; expense: number }>();
 
-    for (const tx of transactionsQuery.data) {
+    for (const tx of transactions) {
       const currency = walletById.get(tx.walletId)?.currency ?? '';
       const month = tx.date.slice(0, 7);
       const trendKey = `${month}|${currency}`;
@@ -88,7 +102,7 @@ export function useDashboard(userId: string | undefined) {
       totalBalanceByCurrency: Array.from(balanceByCurrency.entries())
         .map(([currency, total]) => ({ currency, total }))
         .sort((a, b) => b.total - a.total),
-      wallets: walletsQuery.data.map((w) => ({
+      wallets: wallets.map((w) => ({
         walletId: w.id,
         walletName: w.name,
         currency: w.currency,
@@ -97,9 +111,9 @@ export function useDashboard(userId: string | undefined) {
       expenseByCategory: toCategoryTotals(expenseByCategory),
       incomeByCategory: toCategoryTotals(incomeByCategory),
       monthlyTrend: trend,
-      recentTransactionIds: transactionsQuery.data.slice(0, 10).map((t) => t.id),
+      recentTransactionIds: transactions.slice(0, 10).map((t) => t.id),
     };
-  }, [walletsQuery.data, categoriesQuery.data, transactionsQuery.data]);
+  }, [walletsQuery.data, categoriesQuery.data, transactionsQuery.data, options.walletIds]);
 
   return {
     summary,

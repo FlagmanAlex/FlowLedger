@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Bar,
@@ -9,17 +10,26 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useCategories, useDashboard } from '@flowledger/shared';
+import { useCategories, useDashboard, useHolders, useWallets } from '@flowledger/shared';
 import type { MonthlyTrendPoint } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { CategoryBar } from '@/components/ui/CategoryBar';
+import { HolderFilter } from '@/components/ui/HolderFilter';
 import { colorForId } from '@/lib/palette';
 import { formatAmount, formatMonthShort } from '@/lib/format';
+import { walletIdsForHolderFilter, type HolderFilterValue } from '@/lib/holderFilter';
 import './Reports.css';
 
 export function Reports() {
   const { ownerId } = useOutletContext<MainOutletContext>();
-  const { summary, isLoading } = useDashboard(ownerId);
+  const { data: wallets } = useWallets(ownerId);
+  const { data: holders } = useHolders(ownerId);
+  const [holderFilter, setHolderFilter] = useState<HolderFilterValue>('all');
+  const walletIds = useMemo(
+    () => walletIdsForHolderFilter(wallets ?? [], holderFilter),
+    [wallets, holderFilter],
+  );
+  const { summary, isLoading } = useDashboard(ownerId, { walletIds });
   const { data: categories } = useCategories(ownerId);
 
   if (isLoading || !summary) {
@@ -57,6 +67,13 @@ export function Reports() {
   return (
     <div className="page">
       <h1 className="page__title">Отчёты</h1>
+
+      <HolderFilter
+        holders={holders ?? []}
+        wallets={wallets ?? []}
+        value={holderFilter}
+        onChange={setHolderFilter}
+      />
 
       {trendBlocks.length === 0 && (
         <section className="neo-card">
