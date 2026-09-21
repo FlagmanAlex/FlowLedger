@@ -57,7 +57,7 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
   const [showAddCounterparty, setShowAddCounterparty] = useState(false);
   const [newCounterpartyName, setNewCounterpartyName] = useState('');
   const [walletId, setWalletId] = useState<string | undefined>(
-    debt?.walletId ?? openingTransaction?.walletId ?? wallets[0]?.id,
+    openingTransaction?.walletId ?? debt?.walletId ?? wallets[0]?.id,
   );
   const [principal, setPrincipal] = useState(
     openingTransaction ? String(roundMoney(openingTransaction.amount)) : '',

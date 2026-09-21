@@ -84,31 +84,31 @@ export function Debts() {
         </button>
 
         {d.status === 'active' && (
-          <>
-            <div className="progress-track">
-              <div
-                className="progress-fill"
-                style={{ width: `${Math.min(100, percent)}%`, ['--fill-color' as string]: accent }}
-              />
-            </div>
-            <div className="debt-card__actions">
-              <button
-                type="button"
-                className="neo-button neo-button--sm"
-                onClick={() => setRepayingDebt(d)}
-              >
-                Погасить
-              </button>
-              <button
-                type="button"
-                className="neo-button neo-button--sm neo-button--danger"
-                onClick={() => setDebtToDelete(d)}
-              >
-                Удалить
-              </button>
-            </div>
-          </>
+          <div className="progress-track">
+            <div
+              className="progress-fill"
+              style={{ width: `${Math.min(100, percent)}%`, ['--fill-color' as string]: accent }}
+            />
+          </div>
         )}
+        <div className="debt-card__actions">
+          {d.status === 'active' && (
+            <button
+              type="button"
+              className="neo-button neo-button--sm"
+              onClick={() => setRepayingDebt(d)}
+            >
+              Погасить
+            </button>
+          )}
+          <button
+            type="button"
+            className="neo-button neo-button--sm neo-button--danger"
+            onClick={() => setDebtToDelete(d)}
+          >
+            Удалить
+          </button>
+        </div>
       </div>
     );
   }

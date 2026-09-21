@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import {
   useCategories,
   useCounterparties,
   useDashboard,
   useDebts,
+  useHolders,
   useTransactions,
   useWallets,
 } from '@flowledger/shared';
@@ -12,8 +13,10 @@ import type { MonthlyTrendPoint } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { CategoryBar } from '@/components/ui/CategoryBar';
+import { HolderFilter } from '@/components/ui/HolderFilter';
 import { colorForId } from '@/lib/palette';
 import { formatAmount, formatMonthLong, formatMonthShort } from '@/lib/format';
+import { walletIdsForHolderFilter, type HolderFilterValue } from '@/lib/holderFilter';
 import './Dashboard.css';
 
 const MAIN_CURRENCY = 'RUB';
@@ -44,16 +47,30 @@ function recentMonthOptions(): { value: string; label: string }[] {
 
 export function Dashboard() {
   const { ownerId } = useOutletContext<MainOutletContext>();
-  const { summary, isLoading, error } = useDashboard(ownerId);
   const { data: wallets } = useWallets(ownerId);
+  const { data: holders } = useHolders(ownerId);
+  const [holderFilter, setHolderFilter] = useState<HolderFilterValue>('all');
+  const walletIds = useMemo(
+    () => walletIdsForHolderFilter(wallets ?? [], holderFilter),
+    [wallets, holderFilter],
+  );
+  const walletIdSet = walletIds ? new Set(walletIds) : undefined;
+  const { summary, isLoading, error } = useDashboard(ownerId, { walletIds });
   const { data: categories } = useCategories(ownerId);
   const { data: debts } = useDebts(ownerId);
   const { data: counterparties } = useCounterparties(ownerId);
-  const { data: recentTransactions } = useTransactions(ownerId, { limit: 4 });
+  const { data: recentTransactionsRaw } = useTransactions(ownerId, { limit: walletIdSet ? 20 : 4 });
+  const recentTransactions = (walletIdSet
+    ? (recentTransactionsRaw ?? []).filter((t) => walletIdSet.has(t.walletId))
+    : recentTransactionsRaw ?? []
+  ).slice(0, 4);
 
   const [selectedMonth, setSelectedMonth] = useState(() => monthKey(new Date()));
   const { dateFrom, dateTo } = monthDateRange(selectedMonth);
-  const { data: monthTransactions } = useTransactions(ownerId, { dateFrom, dateTo, limit: 500 });
+  const { data: monthTransactionsRaw } = useTransactions(ownerId, { dateFrom, dateTo, limit: 500 });
+  const monthTransactions = walletIdSet
+    ? (monthTransactionsRaw ?? []).filter((t) => walletIdSet.has(t.walletId))
+    : monthTransactionsRaw;
 
   if (error) {
     return (
@@ -129,7 +146,9 @@ export function Dashboard() {
    *  экране «Долги» — там детализация уместна, здесь нужен обзор. Валюта
    *  долга берётся из его кошелька (см. Debt.walletId) и нетто считается
    *  раздельно по валютам, чтобы не смешивать суммы в разных деньгах. */
-  const activeDebts = (debts ?? []).filter((d) => d.status === 'active');
+  const activeDebts = (debts ?? []).filter(
+    (d) => d.status === 'active' && (!walletIdSet || walletIdSet.has(d.walletId)),
+  );
   const debtNetByKey = new Map<string, { counterpartyId: string; currency: string; net: number }>();
   const lentTotalByCurrency = new Map<string, number>();
   const borrowedTotalByCurrency = new Map<string, number>();
@@ -159,6 +178,13 @@ export function Dashboard() {
         <h1 className="page__title">Дашборд</h1>
         <span className="dashboard-header__month">{formatMonthLong(new Date())}</span>
       </div>
+
+      <HolderFilter
+        holders={holders ?? []}
+        wallets={wallets ?? []}
+        value={holderFilter}
+        onChange={setHolderFilter}
+      />
 
       <section className="neo-card">
         <div className="balance-label">Общий баланс</div>

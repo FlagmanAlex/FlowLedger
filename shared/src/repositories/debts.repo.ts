@@ -95,9 +95,12 @@ export interface UpdateDebtOpeningInput {
  * через updateTransaction, ту же атомарную runTransaction, что и у любой
  * другой операции: она уже сама пересчитывает и баланс кошелька(ов), и
  * Debt.remainingAmount по дельте между старой и новой суммой (см.
- * transactions.repo.ts). Debt.principal отдельным вызовом сдвигается на
- * ту же дельту — remainingAmount транзакция поправила, а principal
- * (используется в проценте прогресса) на ней не завязан.
+ * transactions.repo.ts). Debt.principal/walletId отдельным вызовом
+ * синхронизируются с новыми значениями — remainingAmount транзакция
+ * поправила сама, а principal (процент прогресса) и walletId (кошелёк
+ * долга — источник для будущих погашений и отображения карточки в
+ * Debts.tsx) на ней не завязаны и раньше расходились с открывающей
+ * операцией после правки, пока их не завели сюда явно.
  */
 export async function updateDebtOpening(
   debt: Debt,
@@ -116,8 +119,11 @@ export async function updateDebtOpening(
     description: input.description,
   });
 
-  if (input.principal !== debt.principal) {
-    await updateDoc(doc(debtsCollection(), debt.id), { principal: input.principal });
+  const debtPatch: Partial<Pick<Debt, 'principal' | 'walletId'>> = {};
+  if (input.principal !== debt.principal) debtPatch.principal = input.principal;
+  if (input.walletId !== debt.walletId) debtPatch.walletId = input.walletId;
+  if (Object.keys(debtPatch).length > 0) {
+    await updateDoc(doc(debtsCollection(), debt.id), debtPatch);
   }
 }
 
