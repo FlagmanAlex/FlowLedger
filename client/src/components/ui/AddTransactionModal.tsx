@@ -19,6 +19,10 @@ interface AddTransactionModalProps {
   wallets: Wallet[];
   categories: Category[];
   defaultType: TransactionType;
+  /** Кошелёк, выбранный по умолчанию для новой операции — например, когда
+   *  диалог открыт с экрана операций, отфильтрованного по конкретному
+   *  кошельку. Игнорируется при редактировании существующей операции. */
+  defaultWalletId?: string;
   transaction?: Transaction;
   onClose: () => void;
 }
@@ -33,6 +37,7 @@ export function AddTransactionModal({
   wallets,
   categories,
   defaultType,
+  defaultWalletId,
   transaction,
   onClose,
 }: AddTransactionModalProps) {
@@ -44,7 +49,9 @@ export function AddTransactionModal({
 
   const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType);
   const [amount, setAmount] = useState(transaction ? String(roundMoney(transaction.amount)) : '');
-  const [walletId, setWalletId] = useState<string | undefined>(transaction?.walletId ?? wallets[0]?.id);
+  const [walletId, setWalletId] = useState<string | undefined>(
+    transaction?.walletId ?? defaultWalletId ?? wallets[0]?.id,
+  );
   const [categoryId, setCategoryId] = useState<string | undefined>(transaction?.categoryId);
   const [description, setDescription] = useState(transaction?.description ?? '');
   const [date, setDate] = useState(transaction?.date ?? today());

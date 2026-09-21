@@ -221,6 +221,7 @@ export function Transactions() {
           wallets={(wallets ?? []).filter((w) => !w.archived)}
           categories={categories ?? []}
           defaultType={addType}
+          defaultWalletId={walletId}
           onClose={() => setShowAdd(false)}
         />
       )}
