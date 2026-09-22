@@ -6,6 +6,7 @@ import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { AddTransactionModal } from '@/components/ui/AddTransactionModal';
 import { TransferModal } from '@/components/ui/TransferModal';
+import { QueryError } from '@/components/ui/QueryError';
 import { colorForId } from '@/lib/palette';
 import { formatAmount, formatDateHeader } from '@/lib/format';
 import './Transactions.css';
@@ -37,12 +38,13 @@ export function Transactions() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
 
-  const { data: wallets } = useWallets(ownerId);
-  const { data: categories } = useCategories(ownerId);
+  const { data: wallets, error: walletsError } = useWallets(ownerId);
+  const { data: categories, error: categoriesError } = useCategories(ownerId);
   const { data: holders } = useHolders(ownerId);
   const { data: debts } = useDebts(ownerId);
   const { data: counterparties } = useCounterparties(ownerId);
-  const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId, walletId });
+  const { data: transactions, isLoading, error } = useTransactions(ownerId, { categoryId, walletId });
+  const loadError = error ?? walletsError ?? categoriesError;
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
@@ -103,8 +105,9 @@ export function Transactions() {
       </div>
 
       <section className="neo-card">
-        {isLoading && <p className="state-message">Загрузка...</p>}
-        {!isLoading && groups.length === 0 && <p className="state-message">Операций пока нет</p>}
+        <QueryError error={loadError} label="Не удалось загрузить операции" />
+        {isLoading && !loadError && <p className="state-message">Загрузка...</p>}
+        {!isLoading && !loadError && groups.length === 0 && <p className="state-message">Операций пока нет</p>}
         {groups.map((group) => (
           <div key={group.date}>
             <div className="date-header">{formatDateHeader(group.date)}</div>

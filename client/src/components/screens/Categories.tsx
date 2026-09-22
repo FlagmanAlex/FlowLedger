@@ -14,6 +14,7 @@ import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { CategoryModal } from '@/components/ui/CategoryModal';
 import { ReorderableList, type DragHandleProps } from '@/components/ui/ReorderableList';
+import { QueryError } from '@/components/ui/QueryError';
 import { colorForId } from '@/lib/palette';
 import { nextSortOrder } from '@/lib/reorder';
 import './forms.css';
@@ -21,7 +22,7 @@ import './forms.css';
 export function Categories() {
   const navigate = useNavigate();
   const { ownerId } = useOutletContext<MainOutletContext>();
-  const { data: categories, isLoading } = useCategories(ownerId);
+  const { data: categories, isLoading, error } = useCategories(ownerId);
   const createCategory = useCreateCategory(ownerId);
   const updateCategory = useUpdateCategory();
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -104,7 +105,8 @@ export function Categories() {
         </form>
       </section>
 
-      {isLoading && <p className="state-message">Загрузка...</p>}
+      <QueryError error={error} label="Не удалось загрузить категории" />
+      {isLoading && !error && <p className="state-message">Загрузка...</p>}
 
       <section className="neo-card">
         <h2 className="section-title">Расходы</h2>

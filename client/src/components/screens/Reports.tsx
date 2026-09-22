@@ -29,8 +29,18 @@ export function Reports() {
     () => walletIdsForHolderFilter(wallets ?? [], holderFilter),
     [wallets, holderFilter],
   );
-  const { summary, isLoading } = useDashboard(ownerId, { walletIds });
+  const { summary, isLoading, error } = useDashboard(ownerId, { walletIds });
   const { data: categories } = useCategories(ownerId);
+
+  if (error) {
+    return (
+      <div className="page">
+        <p className="state-message" role="alert">
+          Не удалось загрузить отчёты: {error.message}
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading || !summary) {
     return (
