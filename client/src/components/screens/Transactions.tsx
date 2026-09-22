@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { useCategories, useCounterparties, useDebts, useHolders, useTransactions, useWallets } from '@flowledger/shared';
 import type { Transaction, TransactionType } from '@flowledger/interfaces';
@@ -8,7 +8,7 @@ import { AddTransactionModal } from '@/components/ui/AddTransactionModal';
 import { TransferModal } from '@/components/ui/TransferModal';
 import { QueryError } from '@/components/ui/QueryError';
 import { colorForId } from '@/lib/palette';
-import { formatAmount, formatDateHeader } from '@/lib/format';
+import { formatAmount, formatDateHeader, formatMonthLong } from '@/lib/format';
 import './Transactions.css';
 
 type TxFilter = 'all' | 'income' | 'expense';
@@ -26,6 +26,28 @@ function groupByDate(transactions: Transaction[]) {
   return groups;
 }
 
+function currentMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number);
+  return formatMonthLong(new Date(year, m - 1, 1));
+}
+
+/** Месяцы для пикера — только те, где у кошелька реально есть загруженные
+ *  операции, плюс текущий месяц всегда доступен как выбор по умолчанию,
+ *  даже без операций. */
+function monthOptions(transactions: Transaction[]): { value: string; label: string }[] {
+  const months = new Set(transactions.map((t) => t.date.slice(0, 7)));
+  months.add(currentMonthKey());
+  return Array.from(months)
+    .sort()
+    .reverse()
+    .map((value) => ({ value, label: monthLabel(value) }));
+}
+
 export function Transactions() {
   const { user, ownerId } = useOutletContext<MainOutletContext>();
   const [searchParams] = useSearchParams();
@@ -37,13 +59,24 @@ export function Transactions() {
   const [addType, setAddType] = useState<TransactionType>('expense');
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(() => currentMonthKey());
+
+  /** Разные кошельки — разная история, при переключении между ними сбрасываем
+   *  выбранный месяц обратно на текущий, а не оставляем месяц предыдущего
+   *  кошелька, в котором у нового может не быть операций. */
+  useEffect(() => {
+    setSelectedMonth(currentMonthKey());
+  }, [walletId]);
 
   const { data: wallets, error: walletsError } = useWallets(ownerId);
   const { data: categories, error: categoriesError } = useCategories(ownerId);
   const { data: holders } = useHolders(ownerId);
   const { data: debts } = useDebts(ownerId);
   const { data: counterparties } = useCounterparties(ownerId);
-  const { data: transactions, isLoading, error } = useTransactions(ownerId, { categoryId, walletId });
+  const { data: transactions, isLoading, error } = useTransactions(
+    ownerId,
+    walletId ? { categoryId, walletId, limit: 500 } : { categoryId, walletId },
+  );
   const loadError = error ?? walletsError ?? categoriesError;
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
@@ -68,7 +101,11 @@ export function Transactions() {
     return isAmbiguous && holder ? `${holder.name} ▪️${wallet.name}` : wallet.name;
   }
 
-  const filtered = (transactions ?? []).filter((t) => filter === 'all' || t.type === filter);
+  const filtered = (transactions ?? []).filter(
+    (t) =>
+      (filter === 'all' || t.type === filter) &&
+      (!walletId || t.date.slice(0, 7) === selectedMonth),
+  );
   const groups = groupByDate(filtered);
 
   function openAdd(type: TransactionType) {
@@ -104,10 +141,26 @@ export function Transactions() {
         </button>
       </div>
 
+      {walletId && (
+        <select
+          className="neo-input transactions-month-select"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+        >
+          {monthOptions(transactions ?? []).map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      )}
+
       <section className="neo-card">
         <QueryError error={loadError} label="Не удалось загрузить операции" />
         {isLoading && !loadError && <p className="state-message">Загрузка...</p>}
-        {!isLoading && !loadError && groups.length === 0 && <p className="state-message">Операций пока нет</p>}
+        {!isLoading && !loadError && groups.length === 0 && (
+          <p className="state-message">{walletId ? 'Операций за этот месяц нет' : 'Операций пока нет'}</p>
+        )}
         {groups.map((group) => (
           <div key={group.date}>
             <div className="date-header">{formatDateHeader(group.date)}</div>
