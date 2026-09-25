@@ -2,6 +2,18 @@
   margin-bottom: var(--space-2);
 }
 
+.transactions-filter .segmented__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.segmented__amount {
+  font-size: var(--fs-11);
+  font-weight: 500;
+}
+
 .transactions-month-select {
   width: auto;
   height: 36px;

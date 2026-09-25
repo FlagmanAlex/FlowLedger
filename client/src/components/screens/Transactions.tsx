@@ -101,12 +101,42 @@ export function Transactions() {
     return isAmbiguous && holder ? `${holder.name} ▪️${wallet.name}` : wallet.name;
   }
 
-  const filtered = (transactions ?? []).filter(
-    (t) =>
-      (filter === 'all' || t.type === filter) &&
-      (!walletId || t.date.slice(0, 7) === selectedMonth),
+  const periodTransactions = (transactions ?? []).filter(
+    (t) => !walletId || t.date.slice(0, 7) === selectedMonth,
   );
+  const filtered = periodTransactions.filter((t) => filter === 'all' || t.type === filter);
   const groups = groupByDate(filtered);
+
+  /** Суммы под вкладками Все/Приход/Расход — только по видимому периоду
+   *  (месяц, если открыт конкретный кошелёк) и текущим фильтрам категории/
+   *  кошелька. Переводы и операции по долгам в суммы не входят — как и в
+   *  «За месяц» на Главной, они не доход/расход, а просто движение денег. */
+  const incomeByCurrency = new Map<string, number>();
+  const expenseByCurrency = new Map<string, number>();
+  for (const t of periodTransactions) {
+    if (t.type !== 'income' && t.type !== 'expense') continue;
+    const currency = walletById.get(t.walletId)?.currency ?? '';
+    const target = t.type === 'income' ? incomeByCurrency : expenseByCurrency;
+    target.set(currency, (target.get(currency) ?? 0) + Math.abs(t.amount));
+  }
+  const netByCurrency = new Map<string, number>();
+  for (const currency of new Set([...incomeByCurrency.keys(), ...expenseByCurrency.keys()])) {
+    netByCurrency.set(currency, (incomeByCurrency.get(currency) ?? 0) - (expenseByCurrency.get(currency) ?? 0));
+  }
+
+  function formatSums(map: Map<string, number>, prefix: '+' | '−'): string {
+    const entries = Array.from(map.entries()).filter(([, value]) => value !== 0);
+    if (entries.length === 0) return '0';
+    return entries.map(([currency, value]) => `${prefix}${formatAmount(value)} ${currency}`).join(' · ');
+  }
+
+  function formatNet(map: Map<string, number>): string {
+    const entries = Array.from(map.entries()).filter(([, value]) => value !== 0);
+    if (entries.length === 0) return '0';
+    return entries
+      .map(([currency, value]) => `${value >= 0 ? '+' : '−'}${formatAmount(Math.abs(value))} ${currency}`)
+      .join(' · ');
+  }
 
   function openAdd(type: TransactionType) {
     setAddType(type);
@@ -123,21 +153,24 @@ export function Transactions() {
           className={`segmented__item${filter === 'all' ? ' is-active' : ''}`}
           onClick={() => setFilter('all')}
         >
-          Все
+          <span>Все</span>
+          <span className="segmented__amount amount-neutral">{formatNet(netByCurrency)}</span>
         </button>
         <button
           type="button"
           className={`segmented__item${filter === 'income' ? ' is-active' : ''}`}
           onClick={() => setFilter('income')}
         >
-          Приход
+          <span>Приход</span>
+          <span className="segmented__amount amount-positive">{formatSums(incomeByCurrency, '+')}</span>
         </button>
         <button
           type="button"
           className={`segmented__item${filter === 'expense' ? ' is-active' : ''}`}
           onClick={() => setFilter('expense')}
         >
-          Расход
+          <span>Расход</span>
+          <span className="segmented__amount amount-negative">{formatSums(expenseByCurrency, '−')}</span>
         </button>
       </div>
 
