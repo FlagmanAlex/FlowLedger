@@ -36,9 +36,9 @@ function monthLabel(month: string): string {
   return formatMonthLong(new Date(year, m - 1, 1));
 }
 
-/** Месяцы для пикера — только те, где у кошелька реально есть загруженные
- *  операции, плюс текущий месяц всегда доступен как выбор по умолчанию,
- *  даже без операций. */
+/** Месяцы для пикера — только те, где реально есть загруженные операции
+ *  (с учётом текущих фильтров категории/кошелька), плюс текущий месяц
+ *  всегда доступен как выбор по умолчанию, даже без операций. */
 function monthOptions(transactions: Transaction[]): { value: string; label: string }[] {
   const months = new Set(transactions.map((t) => t.date.slice(0, 7)));
   months.add(currentMonthKey());
@@ -61,22 +61,19 @@ export function Transactions() {
   const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(() => currentMonthKey());
 
-  /** Разные кошельки — разная история, при переключении между ними сбрасываем
+  /** Разные кошельки/категории — разная история, при смене фильтра сбрасываем
    *  выбранный месяц обратно на текущий, а не оставляем месяц предыдущего
-   *  кошелька, в котором у нового может не быть операций. */
+   *  выбора, в котором у нового может не быть операций. */
   useEffect(() => {
     setSelectedMonth(currentMonthKey());
-  }, [walletId]);
+  }, [walletId, categoryId]);
 
   const { data: wallets, error: walletsError } = useWallets(ownerId);
   const { data: categories, error: categoriesError } = useCategories(ownerId);
   const { data: holders } = useHolders(ownerId);
   const { data: debts } = useDebts(ownerId);
   const { data: counterparties } = useCounterparties(ownerId);
-  const { data: transactions, isLoading, error } = useTransactions(
-    ownerId,
-    walletId ? { categoryId, walletId, limit: 500 } : { categoryId, walletId },
-  );
+  const { data: transactions, isLoading, error } = useTransactions(ownerId, { categoryId, walletId, limit: 500 });
   const loadError = error ?? walletsError ?? categoriesError;
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
@@ -101,42 +98,26 @@ export function Transactions() {
     return isAmbiguous && holder ? `${holder.name} ▪️${wallet.name}` : wallet.name;
   }
 
-  const periodTransactions = (transactions ?? []).filter(
-    (t) => !walletId || t.date.slice(0, 7) === selectedMonth,
-  );
+  const periodTransactions = (transactions ?? []).filter((t) => t.date.slice(0, 7) === selectedMonth);
   const filtered = periodTransactions.filter((t) => filter === 'all' || t.type === filter);
   const groups = groupByDate(filtered);
 
-  /** Суммы под вкладками Все/Приход/Расход — только по видимому периоду
-   *  (месяц, если открыт конкретный кошелёк) и текущим фильтрам категории/
-   *  кошелька. Переводы и операции по долгам в суммы не входят — как и в
-   *  «За месяц» на Главной, они не доход/расход, а просто движение денег. */
-  const incomeByCurrency = new Map<string, number>();
-  const expenseByCurrency = new Map<string, number>();
+  const MAIN_CURRENCY = 'RUB';
+
+  /** Суммы под вкладками Все/Приход/Расход — за выбранный месяц и текущие
+   *  фильтры категории/кошелька, только по RUB-кошелькам (как и «За месяц»
+   *  на Главной — операции в другой валюте не смешиваются в одно число).
+   *  Переводы и операции по долгам в суммы не входят — они не доход/расход,
+   *  а просто движение денег. */
+  let incomeTotal = 0;
+  let expenseTotal = 0;
   for (const t of periodTransactions) {
     if (t.type !== 'income' && t.type !== 'expense') continue;
-    const currency = walletById.get(t.walletId)?.currency ?? '';
-    const target = t.type === 'income' ? incomeByCurrency : expenseByCurrency;
-    target.set(currency, (target.get(currency) ?? 0) + Math.abs(t.amount));
+    if (walletById.get(t.walletId)?.currency !== MAIN_CURRENCY) continue;
+    if (t.type === 'income') incomeTotal += Math.abs(t.amount);
+    else expenseTotal += Math.abs(t.amount);
   }
-  const netByCurrency = new Map<string, number>();
-  for (const currency of new Set([...incomeByCurrency.keys(), ...expenseByCurrency.keys()])) {
-    netByCurrency.set(currency, (incomeByCurrency.get(currency) ?? 0) - (expenseByCurrency.get(currency) ?? 0));
-  }
-
-  function formatSums(map: Map<string, number>, prefix: '+' | '−'): string {
-    const entries = Array.from(map.entries()).filter(([, value]) => value !== 0);
-    if (entries.length === 0) return '0';
-    return entries.map(([currency, value]) => `${prefix}${formatAmount(value)} ${currency}`).join(' · ');
-  }
-
-  function formatNet(map: Map<string, number>): string {
-    const entries = Array.from(map.entries()).filter(([, value]) => value !== 0);
-    if (entries.length === 0) return '0';
-    return entries
-      .map(([currency, value]) => `${value >= 0 ? '+' : '−'}${formatAmount(Math.abs(value))} ${currency}`)
-      .join(' · ');
-  }
+  const netTotal = incomeTotal - expenseTotal;
 
   function openAdd(type: TransactionType) {
     setAddType(type);
@@ -147,6 +128,18 @@ export function Transactions() {
     <div className="page">
       <h1 className="page__title">Журнал</h1>
 
+      <select
+        className="neo-input transactions-month-select"
+        value={selectedMonth}
+        onChange={(e) => setSelectedMonth(e.target.value)}
+      >
+        {monthOptions(transactions ?? []).map((m) => (
+          <option key={m.value} value={m.value}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+
       <div className="segmented transactions-filter">
         <button
           type="button"
@@ -154,7 +147,10 @@ export function Transactions() {
           onClick={() => setFilter('all')}
         >
           <span>Все</span>
-          <span className="segmented__amount amount-neutral">{formatNet(netByCurrency)}</span>
+          <span className="segmented__amount amount-neutral">
+            {netTotal >= 0 ? '+' : '−'}
+            {formatAmount(Math.abs(netTotal))} {MAIN_CURRENCY}
+          </span>
         </button>
         <button
           type="button"
@@ -162,7 +158,9 @@ export function Transactions() {
           onClick={() => setFilter('income')}
         >
           <span>Приход</span>
-          <span className="segmented__amount amount-positive">{formatSums(incomeByCurrency, '+')}</span>
+          <span className="segmented__amount amount-positive">
+            +{formatAmount(incomeTotal)} {MAIN_CURRENCY}
+          </span>
         </button>
         <button
           type="button"
@@ -170,29 +168,17 @@ export function Transactions() {
           onClick={() => setFilter('expense')}
         >
           <span>Расход</span>
-          <span className="segmented__amount amount-negative">{formatSums(expenseByCurrency, '−')}</span>
+          <span className="segmented__amount amount-negative">
+            −{formatAmount(expenseTotal)} {MAIN_CURRENCY}
+          </span>
         </button>
       </div>
-
-      {walletId && (
-        <select
-          className="neo-input transactions-month-select"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-        >
-          {monthOptions(transactions ?? []).map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-      )}
 
       <section className="neo-card">
         <QueryError error={loadError} label="Не удалось загрузить операции" />
         {isLoading && !loadError && <p className="state-message">Загрузка...</p>}
         {!isLoading && !loadError && groups.length === 0 && (
-          <p className="state-message">{walletId ? 'Операций за этот месяц нет' : 'Операций пока нет'}</p>
+          <p className="state-message">Операций за этот месяц нет</p>
         )}
         {groups.map((group) => (
           <div key={group.date}>
