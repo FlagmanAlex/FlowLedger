@@ -9,6 +9,7 @@ import {
 } from '@flowledger/shared';
 import type { Debt, DebtDirection, Holder, Transaction, Wallet } from '@flowledger/interfaces';
 import { WalletPicker } from '@/components/ui/WalletPicker';
+import { CalculatorModal } from '@/components/ui/CalculatorModal';
 import { roundMoney } from '@/lib/format';
 import './WalletModal.css';
 
@@ -66,6 +67,7 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
   const [description, setDescription] = useState(openingTransaction?.description ?? '');
   const [date, setDate] = useState(openingTransaction?.date ?? today());
   const [error, setError] = useState<string | null>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const isSaving = createDebt.isPending || updateDebt.isPending || updateDebtOpening.isPending;
 
@@ -225,14 +227,24 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
         </div>
 
         <div className="field">
-          <input
-            className="neo-input"
-            type="text"
-            inputMode="decimal"
-            placeholder="Сумма"
-            value={principal}
-            onChange={(e) => setPrincipal(e.target.value.replace(/[^0-9,.]/g, ''))}
-          />
+          <div className="field-with-calculator">
+            <input
+              className="neo-input"
+              type="text"
+              inputMode="decimal"
+              placeholder="Сумма"
+              value={principal}
+              onChange={(e) => setPrincipal(e.target.value.replace(/[^0-9,.]/g, ''))}
+            />
+            <button
+              type="button"
+              className="calculator-trigger"
+              aria-label="Калькулятор"
+              onClick={() => setShowCalculator(true)}
+            >
+              🧮
+            </button>
+          </div>
         </div>
 
         <div className="field">
@@ -283,6 +295,14 @@ export function DebtModal({ user, ownerId, wallets, holders, debt, openingTransa
           {isSaving ? 'Сохранение…' : isEditing ? 'Сохранить' : 'Добавить'}
         </button>
       </div>
+
+      {showCalculator && (
+        <CalculatorModal
+          initialValue={principal}
+          onApply={setPrincipal}
+          onClose={() => setShowCalculator(false)}
+        />
+      )}
     </div>
   );
 }

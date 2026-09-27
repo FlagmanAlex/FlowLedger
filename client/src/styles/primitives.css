@@ -465,3 +465,43 @@ textarea.neo-input {
   font-weight: var(--fw-bold);
   color: var(--text);
 }
+
+/* ---------- Калькулятор в числовых полях ---------- */
+
+.calculator-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-16);
+  cursor: pointer;
+}
+
+.calculator-trigger:active {
+  color: var(--text);
+}
+
+/* Для полей .neo-input без своего flex-контейнера — кнопка абсолютно
+ *  позиционирована поверх правого края поля, а не рядом с ним. */
+.field-with-calculator {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-with-calculator .neo-input {
+  padding-right: 44px;
+}
+
+.field-with-calculator .calculator-trigger {
+  position: absolute;
+  right: var(--space-2);
+}

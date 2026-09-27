@@ -9,6 +9,7 @@ import {
 import type { Category, Transaction, TransactionType, Wallet } from '@flowledger/interfaces';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { WalletPicker } from '@/components/ui/WalletPicker';
+import { CalculatorModal } from '@/components/ui/CalculatorModal';
 import { colorForId } from '@/lib/palette';
 import { roundMoney } from '@/lib/format';
 import './AddTransactionModal.css';
@@ -56,6 +57,7 @@ export function AddTransactionModal({
   const [description, setDescription] = useState(transaction?.description ?? '');
   const [date, setDate] = useState(transaction?.date ?? today());
   const [error, setError] = useState<string | null>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const categoriesForType = categories.filter((c) => c.type === type);
 
@@ -160,6 +162,14 @@ export function AddTransactionModal({
           <span className="add-tx__amount-suffix">
             {wallets.find((w) => w.id === walletId)?.currency ?? ''}
           </span>
+          <button
+            type="button"
+            className="calculator-trigger"
+            aria-label="Калькулятор"
+            onClick={() => setShowCalculator(true)}
+          >
+            🧮
+          </button>
         </div>
 
         <div className="add-tx__section">
@@ -233,6 +243,14 @@ export function AddTransactionModal({
           </button>
         )}
       </div>
+
+      {showCalculator && (
+        <CalculatorModal
+          initialValue={amount}
+          onApply={setAmount}
+          onClose={() => setShowCalculator(false)}
+        />
+      )}
     </div>
   );
 }

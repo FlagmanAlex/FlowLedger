@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRepayDebt, type UseAuthResult } from '@flowledger/shared';
 import type { Debt } from '@flowledger/interfaces';
+import { CalculatorModal } from '@/components/ui/CalculatorModal';
 import { formatAmount, roundMoney } from '@/lib/format';
 
 interface RepayDebtModalProps {
@@ -22,6 +23,7 @@ export function RepayDebtModal({ user, ownerId, debt, counterpartyName, currency
   const [date, setDate] = useState(today());
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const numericAmount = Number(amount.replace(',', '.')) || 0;
 
@@ -61,15 +63,25 @@ export function RepayDebtModal({ user, ownerId, debt, counterpartyName, currency
         </p>
 
         <div className="field">
-          <input
-            className="neo-input"
-            type="text"
-            inputMode="decimal"
-            placeholder="0"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^0-9,.]/g, ''))}
-            autoFocus
-          />
+          <div className="field-with-calculator">
+            <input
+              className="neo-input"
+              type="text"
+              inputMode="decimal"
+              placeholder="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9,.]/g, ''))}
+              autoFocus
+            />
+            <button
+              type="button"
+              className="calculator-trigger"
+              aria-label="Калькулятор"
+              onClick={() => setShowCalculator(true)}
+            >
+              🧮
+            </button>
+          </div>
         </div>
 
         <div className="field">
@@ -107,6 +119,14 @@ export function RepayDebtModal({ user, ownerId, debt, counterpartyName, currency
           {repayDebt.isPending ? 'Сохранение…' : 'Погасить'}
         </button>
       </div>
+
+      {showCalculator && (
+        <CalculatorModal
+          initialValue={amount}
+          onApply={setAmount}
+          onClose={() => setShowCalculator(false)}
+        />
+      )}
     </div>
   );
 }
