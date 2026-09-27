@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { useCategories, useCounterparties, useDebts, useHolders, useTransactions, useWallets } from '@flowledger/shared';
 import type { Transaction, TransactionType } from '@flowledger/interfaces';
@@ -6,8 +6,9 @@ import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { AddTransactionModal } from '@/components/ui/AddTransactionModal';
 import { TransferModal } from '@/components/ui/TransferModal';
+import { QueryError } from '@/components/ui/QueryError';
 import { colorForId } from '@/lib/palette';
-import { formatAmount, formatDateHeader } from '@/lib/format';
+import { formatAmount, formatDateHeader, formatMonthLong } from '@/lib/format';
 import './Transactions.css';
 
 type TxFilter = 'all' | 'income' | 'expense';
@@ -25,6 +26,28 @@ function groupByDate(transactions: Transaction[]) {
   return groups;
 }
 
+function currentMonthKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number);
+  return formatMonthLong(new Date(year, m - 1, 1));
+}
+
+/** Месяцы для пикера — только те, где реально есть загруженные операции
+ *  (с учётом текущих фильтров категории/кошелька), плюс текущий месяц
+ *  всегда доступен как выбор по умолчанию, даже без операций. */
+function monthOptions(transactions: Transaction[]): { value: string; label: string }[] {
+  const months = new Set(transactions.map((t) => t.date.slice(0, 7)));
+  months.add(currentMonthKey());
+  return Array.from(months)
+    .sort()
+    .reverse()
+    .map((value) => ({ value, label: monthLabel(value) }));
+}
+
 export function Transactions() {
   const { user, ownerId } = useOutletContext<MainOutletContext>();
   const [searchParams] = useSearchParams();
@@ -36,13 +59,22 @@ export function Transactions() {
   const [addType, setAddType] = useState<TransactionType>('expense');
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(() => currentMonthKey());
 
-  const { data: wallets } = useWallets(ownerId);
-  const { data: categories } = useCategories(ownerId);
+  /** Разные кошельки/категории — разная история, при смене фильтра сбрасываем
+   *  выбранный месяц обратно на текущий, а не оставляем месяц предыдущего
+   *  выбора, в котором у нового может не быть операций. */
+  useEffect(() => {
+    setSelectedMonth(currentMonthKey());
+  }, [walletId, categoryId]);
+
+  const { data: wallets, error: walletsError } = useWallets(ownerId);
+  const { data: categories, error: categoriesError } = useCategories(ownerId);
   const { data: holders } = useHolders(ownerId);
   const { data: debts } = useDebts(ownerId);
   const { data: counterparties } = useCounterparties(ownerId);
-  const { data: transactions, isLoading } = useTransactions(ownerId, { categoryId, walletId });
+  const { data: transactions, isLoading, error } = useTransactions(ownerId, { categoryId, walletId, limit: 500 });
+  const loadError = error ?? walletsError ?? categoriesError;
 
   const categoryById = new Map((categories ?? []).map((c) => [c.id, c]));
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
@@ -66,8 +98,26 @@ export function Transactions() {
     return isAmbiguous && holder ? `${holder.name} ▪️${wallet.name}` : wallet.name;
   }
 
-  const filtered = (transactions ?? []).filter((t) => filter === 'all' || t.type === filter);
+  const periodTransactions = (transactions ?? []).filter((t) => t.date.slice(0, 7) === selectedMonth);
+  const filtered = periodTransactions.filter((t) => filter === 'all' || t.type === filter);
   const groups = groupByDate(filtered);
+
+  const MAIN_CURRENCY = 'RUB';
+
+  /** Суммы под вкладками Все/Приход/Расход — за выбранный месяц и текущие
+   *  фильтры категории/кошелька, только по RUB-кошелькам (как и «За месяц»
+   *  на Главной — операции в другой валюте не смешиваются в одно число).
+   *  Переводы и операции по долгам в суммы не входят — они не доход/расход,
+   *  а просто движение денег. */
+  let incomeTotal = 0;
+  let expenseTotal = 0;
+  for (const t of periodTransactions) {
+    if (t.type !== 'income' && t.type !== 'expense') continue;
+    if (walletById.get(t.walletId)?.currency !== MAIN_CURRENCY) continue;
+    if (t.type === 'income') incomeTotal += Math.abs(t.amount);
+    else expenseTotal += Math.abs(t.amount);
+  }
+  const netTotal = incomeTotal - expenseTotal;
 
   function openAdd(type: TransactionType) {
     setAddType(type);
@@ -78,33 +128,58 @@ export function Transactions() {
     <div className="page">
       <h1 className="page__title">Журнал</h1>
 
+      <select
+        className="neo-input transactions-month-select"
+        value={selectedMonth}
+        onChange={(e) => setSelectedMonth(e.target.value)}
+      >
+        {monthOptions(transactions ?? []).map((m) => (
+          <option key={m.value} value={m.value}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+
       <div className="segmented transactions-filter">
         <button
           type="button"
           className={`segmented__item${filter === 'all' ? ' is-active' : ''}`}
           onClick={() => setFilter('all')}
         >
-          Все
+          <span>Все</span>
+          <span className="segmented__amount amount-neutral">
+            {netTotal >= 0 ? '+' : '−'}
+            {formatAmount(Math.abs(netTotal))} {MAIN_CURRENCY}
+          </span>
         </button>
         <button
           type="button"
           className={`segmented__item${filter === 'income' ? ' is-active' : ''}`}
           onClick={() => setFilter('income')}
         >
-          Приход
+          <span>Приход</span>
+          <span className="segmented__amount amount-positive">
+            +{formatAmount(incomeTotal)} {MAIN_CURRENCY}
+          </span>
         </button>
         <button
           type="button"
           className={`segmented__item${filter === 'expense' ? ' is-active' : ''}`}
           onClick={() => setFilter('expense')}
         >
-          Расход
+          <span>Расход</span>
+          <span className="segmented__amount amount-negative">
+            −{formatAmount(expenseTotal)} {MAIN_CURRENCY}
+          </span>
         </button>
       </div>
 
       <section className="neo-card">
-        {isLoading && <p className="state-message">Загрузка...</p>}
-        {!isLoading && groups.length === 0 && <p className="state-message">Операций пока нет</p>}
+        <QueryError error={loadError} label="Не удалось загрузить операции" />
+        {isLoading && !loadError && <p className="state-message">Загрузка...</p>}
+        {!isLoading && !loadError && groups.length === 0 && (
+          <p className="state-message">Операций за этот месяц нет</p>
+        )}
         {groups.map((group) => (
           <div key={group.date}>
             <div className="date-header">{formatDateHeader(group.date)}</div>
@@ -221,6 +296,7 @@ export function Transactions() {
           wallets={(wallets ?? []).filter((w) => !w.archived)}
           categories={categories ?? []}
           defaultType={addType}
+          defaultWalletId={walletId}
           onClose={() => setShowAdd(false)}
         />
       )}

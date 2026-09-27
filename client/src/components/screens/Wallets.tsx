@@ -8,6 +8,7 @@ import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { ReorderableList, type DragHandleProps } from '@/components/ui/ReorderableList';
 import { WalletModal } from '@/components/ui/WalletModal';
 import { TransferModal } from '@/components/ui/TransferModal';
+import { QueryError } from '@/components/ui/QueryError';
 import { colorForId } from '@/lib/palette';
 import { formatAmount } from '@/lib/format';
 import { nextSortOrder } from '@/lib/reorder';
@@ -16,8 +17,8 @@ import './forms.css';
 export function Wallets() {
   const navigate = useNavigate();
   const { user, ownerId } = useOutletContext<MainOutletContext>();
-  const { data: wallets, isLoading } = useWallets(ownerId);
-  const { data: holders } = useHolders(ownerId);
+  const { data: wallets, isLoading, error } = useWallets(ownerId);
+  const { data: holders, error: holdersError } = useHolders(ownerId);
   const archiveWallet = useArchiveWallet();
   const updateWallet = useUpdateWallet();
   const [openWalletId, setOpenWalletId] = useState<string | null>(null);
@@ -103,13 +104,16 @@ export function Wallets() {
         </div>
       </div>
 
+      <QueryError error={error} label="Не удалось загрузить кошельки" />
+      <QueryError error={holdersError} label="Не удалось загрузить держателей" />
+
       {isLoading && (
         <section className="neo-card">
           <p className="state-message">Загрузка...</p>
         </section>
       )}
 
-      {!isLoading && activeWallets.length === 0 && (
+      {!isLoading && !error && activeWallets.length === 0 && (
         <section className="neo-card">
           <p className="state-message">Кошельков пока нет</p>
         </section>

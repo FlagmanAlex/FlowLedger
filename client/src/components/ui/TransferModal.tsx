@@ -8,6 +8,7 @@ import {
 } from '@flowledger/shared';
 import type { Transaction, Wallet } from '@flowledger/interfaces';
 import { WalletPicker } from '@/components/ui/WalletPicker';
+import { CalculatorModal } from '@/components/ui/CalculatorModal';
 import { formatAmount, roundMoney } from '@/lib/format';
 import './TransferModal.css';
 
@@ -51,6 +52,7 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
   const [description, setDescription] = useState(transaction?.description ?? '');
   const [date, setDate] = useState(transaction?.date ?? today());
   const [error, setError] = useState<string | null>(null);
+  const [calculatorTarget, setCalculatorTarget] = useState<'amount' | 'rate' | 'commission' | null>(null);
 
   const fromWallet = wallets.find((w) => w.id === fromWalletId);
   const toWallet = wallets.find((w) => w.id === toWalletId);
@@ -146,6 +148,14 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
             autoFocus
           />
           <span className="transfer-modal__amount-suffix">{fromWallet?.currency ?? ''}</span>
+          <button
+            type="button"
+            className="calculator-trigger"
+            aria-label="Калькулятор"
+            onClick={() => setCalculatorTarget('amount')}
+          >
+            🧮
+          </button>
         </div>
 
         <div className="transfer-modal__section">
@@ -177,30 +187,50 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
                     ? `1 ${fromWallet.currency} = ? ${toWallet.currency}`
                     : `1 ${toWallet.currency} = ? ${fromWallet.currency}`}
                 </label>
-                <input
-                  id="transfer-rate"
-                  className="neo-input"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={exchangeRateInput}
-                  onChange={(e) => setExchangeRateInput(e.target.value.replace(/[^0-9,.]/g, ''))}
-                />
+                <div className="field-with-calculator">
+                  <input
+                    id="transfer-rate"
+                    className="neo-input"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={exchangeRateInput}
+                    onChange={(e) => setExchangeRateInput(e.target.value.replace(/[^0-9,.]/g, ''))}
+                  />
+                  <button
+                    type="button"
+                    className="calculator-trigger"
+                    aria-label="Калькулятор"
+                    onClick={() => setCalculatorTarget('rate')}
+                  >
+                    🧮
+                  </button>
+                </div>
               </div>
             )}
             <div className="field">
               <label className="section-title" htmlFor="transfer-commission">
                 Комиссия банка, {fromWallet.currency}
               </label>
-              <input
-                id="transfer-commission"
-                className="neo-input"
-                type="text"
-                inputMode="decimal"
-                placeholder="0"
-                value={commissionAmountInput}
-                onChange={(e) => setCommissionAmountInput(e.target.value.replace(/[^0-9,.]/g, ''))}
-              />
+              <div className="field-with-calculator">
+                <input
+                  id="transfer-commission"
+                  className="neo-input"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={commissionAmountInput}
+                  onChange={(e) => setCommissionAmountInput(e.target.value.replace(/[^0-9,.]/g, ''))}
+                />
+                <button
+                  type="button"
+                  className="calculator-trigger"
+                  aria-label="Калькулятор"
+                  onClick={() => setCalculatorTarget('commission')}
+                >
+                  🧮
+                </button>
+              </div>
               {commissionAmountValue > 0 && numericAmount > 0 && (
                 <span className="transfer-modal__commission-hint">
                   ≈ {formatAmount(commissionPercentValue)}%
@@ -262,6 +292,26 @@ export function TransferModal({ user, ownerId, wallets, transaction, onClose }: 
           </button>
         )}
       </div>
+
+      {calculatorTarget && (
+        <CalculatorModal
+          initialValue={
+            calculatorTarget === 'amount'
+              ? amount
+              : calculatorTarget === 'rate'
+                ? exchangeRateInput
+                : commissionAmountInput
+          }
+          onApply={
+            calculatorTarget === 'amount'
+              ? setAmount
+              : calculatorTarget === 'rate'
+                ? setExchangeRateInput
+                : setCommissionAmountInput
+          }
+          onClose={() => setCalculatorTarget(null)}
+        />
+      )}
     </div>
   );
 }

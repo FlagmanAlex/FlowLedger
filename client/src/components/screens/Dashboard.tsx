@@ -36,13 +36,22 @@ function monthDateRange(month: string): { dateFrom: string; dateTo: string } {
   };
 }
 
-/** Последние 12 месяцев, включая текущий — диапазон выбора в пикере. */
-function recentMonthOptions(): { value: string; label: string }[] {
-  const now = new Date();
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    return { value: monthKey(d), label: formatMonthLong(d) };
-  });
+function monthLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number);
+  return formatMonthLong(new Date(year, m - 1, 1));
+}
+
+/** Месяцы для пикера — только те, где реально есть операции (берём из уже
+ *  посчитанного summary.monthlyTrend, а не рисуем фиксированные 12 месяцев
+ *  вперёд по календарю), плюс текущий месяц всегда доступен как выбор по
+ *  умолчанию, даже если операций в нём ещё не было. */
+function monthOptionsFromTrend(monthlyTrend: MonthlyTrendPoint[]): { value: string; label: string }[] {
+  const months = new Set(monthlyTrend.map((p) => p.month));
+  months.add(monthKey(new Date()));
+  return Array.from(months)
+    .sort()
+    .reverse()
+    .map((value) => ({ value, label: monthLabel(value) }));
 }
 
 export function Dashboard() {
@@ -76,7 +85,7 @@ export function Dashboard() {
     return (
       <div className="page">
         <p className="state-message" role="alert">
-          Не удалось загрузить дашборд: {error.message}
+          Не удалось загрузить главную: {error.message}
         </p>
       </div>
     );
@@ -85,7 +94,7 @@ export function Dashboard() {
   if (isLoading || !summary) {
     return (
       <div className="page">
-        <p className="state-message">Загрузка дашборда...</p>
+        <p className="state-message">Загрузка...</p>
       </div>
     );
   }
@@ -175,7 +184,7 @@ export function Dashboard() {
   return (
     <div className="page">
       <div className="dashboard-header">
-        <h1 className="page__title">Дашборд</h1>
+        <h1 className="page__title">Главная</h1>
         <span className="dashboard-header__month">{formatMonthLong(new Date())}</span>
       </div>
 
@@ -281,7 +290,7 @@ export function Dashboard() {
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
           >
-            {recentMonthOptions().map((m) => (
+            {monthOptionsFromTrend(summary.monthlyTrend).map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
               </option>

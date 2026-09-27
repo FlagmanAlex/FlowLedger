@@ -1,0 +1,38 @@
+.calculator-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.calculator-modal__display {
+  text-align: right;
+  font-size: var(--fs-38);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  padding: var(--space-2);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.calculator-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.calculator-modal__key {
+  height: 56px;
+  font-size: var(--fs-19);
+}
+
+.calculator-modal__key--zero {
+  grid-column: span 2;
+}
+
+.calculator-modal__key--op {
+  color: var(--accent);
+}
+
+.calculator-modal__key--muted {
+  color: var(--text-secondary);
+}

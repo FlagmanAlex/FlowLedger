@@ -14,16 +14,18 @@ import { IconCircle } from '@/components/ui/IconCircle';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DebtModal } from '@/components/ui/DebtModal';
 import { RepayDebtModal } from '@/components/ui/RepayDebtModal';
+import { QueryError } from '@/components/ui/QueryError';
 import { colorForId } from '@/lib/palette';
 import { formatAmount } from '@/lib/format';
 import './Debts.css';
 
 export function Debts() {
   const { user, ownerId } = useOutletContext<MainOutletContext>();
-  const { data: debts, isLoading } = useDebts(ownerId);
-  const { data: wallets } = useWallets(ownerId);
+  const { data: debts, isLoading, error } = useDebts(ownerId);
+  const { data: wallets, error: walletsError } = useWallets(ownerId);
   const { data: holders } = useHolders(ownerId);
-  const { data: counterparties } = useCounterparties(ownerId);
+  const { data: counterparties, error: counterpartiesError } = useCounterparties(ownerId);
+  const loadError = error ?? walletsError ?? counterpartiesError;
   const deleteDebt = useDeleteDebt(ownerId);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -126,13 +128,15 @@ export function Debts() {
         </button>
       </div>
 
-      {isLoading && (
+      <QueryError error={loadError} label="Не удалось загрузить долги" />
+
+      {isLoading && !loadError && (
         <section className="neo-card">
           <p className="state-message">Загрузка...</p>
         </section>
       )}
 
-      {!isLoading && all.length === 0 && (
+      {!isLoading && !loadError && all.length === 0 && (
         <section className="neo-card">
           <p className="state-message">Долгов пока нет</p>
         </section>

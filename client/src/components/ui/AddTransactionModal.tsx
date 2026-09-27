@@ -9,6 +9,7 @@ import {
 import type { Category, Transaction, TransactionType, Wallet } from '@flowledger/interfaces';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { WalletPicker } from '@/components/ui/WalletPicker';
+import { CalculatorModal } from '@/components/ui/CalculatorModal';
 import { colorForId } from '@/lib/palette';
 import { roundMoney } from '@/lib/format';
 import './AddTransactionModal.css';
@@ -19,6 +20,10 @@ interface AddTransactionModalProps {
   wallets: Wallet[];
   categories: Category[];
   defaultType: TransactionType;
+  /** Кошелёк, выбранный по умолчанию для новой операции — например, когда
+   *  диалог открыт с экрана операций, отфильтрованного по конкретному
+   *  кошельку. Игнорируется при редактировании существующей операции. */
+  defaultWalletId?: string;
   transaction?: Transaction;
   onClose: () => void;
 }
@@ -33,6 +38,7 @@ export function AddTransactionModal({
   wallets,
   categories,
   defaultType,
+  defaultWalletId,
   transaction,
   onClose,
 }: AddTransactionModalProps) {
@@ -44,11 +50,14 @@ export function AddTransactionModal({
 
   const [type, setType] = useState<TransactionType>(transaction?.type ?? defaultType);
   const [amount, setAmount] = useState(transaction ? String(roundMoney(transaction.amount)) : '');
-  const [walletId, setWalletId] = useState<string | undefined>(transaction?.walletId ?? wallets[0]?.id);
+  const [walletId, setWalletId] = useState<string | undefined>(
+    transaction?.walletId ?? defaultWalletId ?? wallets[0]?.id,
+  );
   const [categoryId, setCategoryId] = useState<string | undefined>(transaction?.categoryId);
   const [description, setDescription] = useState(transaction?.description ?? '');
   const [date, setDate] = useState(transaction?.date ?? today());
   const [error, setError] = useState<string | null>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const categoriesForType = categories.filter((c) => c.type === type);
 
@@ -153,6 +162,14 @@ export function AddTransactionModal({
           <span className="add-tx__amount-suffix">
             {wallets.find((w) => w.id === walletId)?.currency ?? ''}
           </span>
+          <button
+            type="button"
+            className="calculator-trigger"
+            aria-label="Калькулятор"
+            onClick={() => setShowCalculator(true)}
+          >
+            🧮
+          </button>
         </div>
 
         <div className="add-tx__section">
@@ -226,6 +243,14 @@ export function AddTransactionModal({
           </button>
         )}
       </div>
+
+      {showCalculator && (
+        <CalculatorModal
+          initialValue={amount}
+          onApply={setAmount}
+          onClose={() => setShowCalculator(false)}
+        />
+      )}
     </div>
   );
 }
