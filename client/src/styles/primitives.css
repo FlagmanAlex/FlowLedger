@@ -442,7 +442,7 @@ textarea.neo-input {
   overflow-y: auto;
   background: var(--surface);
   border-radius: var(--radius-xl);
-  box-shadow: var(--neo-raised-lg);
+  box-shadow: var(--modal-shadow);
   padding: var(--space-5);
   /* Нижняя кнопка формы иначе упирается вплотную в панель браузера/жестовую
    *  зону на телефоне — трудно попасть тапом. env() без viewport-fit=cover

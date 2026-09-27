@@ -33,6 +33,13 @@
   --neo-raised-lg: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
   --neo-inset: inset 5px 5px 10px var(--shadow-dark), inset -5px -5px 10px var(--shadow-light);
   --neo-glow-accent: 0 8px 20px rgba(123, 97, 255, 0.35);
+  /* Обычная тень (не неоморфная пара свет/тень) — для карточек поверх
+   *  затемнённого .modal-overlay. Неоморфная пара рассчитана на то, что
+   *  светлая «подсветка» сливается с фоном страницы того же --surface —
+   *  на тёмном полупрозрачном фоне оверлея светлая тень светлой темы
+   *  (--shadow-light: #fff) вместо этого даёт яркое белое свечение по
+   *  краю модалки. */
+  --modal-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
 
   /* Радиусы */
   --radius-sm: 12px;
