@@ -8,8 +8,12 @@
     "dev:emulators": "firebase emulators:start",
     "dev": "concurrently \"npm:dev:emulators\" \"npm:dev:client\"",
     "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "dev:server": "npm run dev --workspace=server",
+    "test:server": "npm run test --workspace=server",
+    "typecheck:server": "npm run typecheck --workspace=server",
     "dev:mobile": "npm run start --workspace=mobile",
-    "install:all": "npm install --workspace=client && npm install --workspace=interfaces && npm install --workspace=mobile && npm install --workspace=shared && npm install"
+    "install:all": "npm install --workspace=client && npm install --workspace=interfaces && npm install --workspace=mobile && npm install --workspace=shared && npm install --workspace=server && npm install"
   },
   "repository": {
     "type": "git",
@@ -28,7 +32,8 @@
     "client",
     "interfaces",
     "mobile",
-    "shared"
+    "shared",
+    "server"
   ],
   "devDependencies": {
     "concurrently": "^10.0.5",

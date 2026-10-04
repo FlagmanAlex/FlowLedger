@@ -1,0 +1,30 @@
+# systemd-юнит API-сервера FlowLedger.
+# Установка: sudo cp flowledger-server.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#            && sudo systemctl enable --now flowledger-server
+# Подробности — docs/SERVER_SETUP.md.
+[Unit]
+Description=FlowLedger API server
+After=network-online.target mongod.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Пользователь, от имени которого работает сервер. Каталог /opt/flowledger-server
+# должен быть доступен на запись пользователю деплоя (rsync) и на чтение этому.
+User=flowledger
+Group=flowledger
+WorkingDirectory=/opt/flowledger-server
+EnvironmentFile=/etc/flowledger/server.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node --enable-source-maps /opt/flowledger-server/index.js
+Restart=on-failure
+RestartSec=3
+
+# Минимальное ужесточение: серверу не нужно писать на диск.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

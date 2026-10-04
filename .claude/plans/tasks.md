@@ -15,7 +15,13 @@
 - [ ] 1. `[server]` Подготовка: от пользователя — версии Mongo/Node на VPS, пользователь/база в
       Mongo, права на рестарт сервиса, nginx, прод-домен (список — в плане)
 - [ ] 2. `[server]` Каркас `server/` (Fastify + mongodb + zod), `/api/health`, systemd, nginx
-      `/flowledger/api/`, `deploy-server.yml`
+      `/flowledger/api/`, `deploy-server.yml`. **Код готов 2026-10-04**: workspace `server/`
+      (конфиг через zod, подключение к Mongo, `GET /api/health` с ping базы, graceful shutdown по
+      SIGTERM, сборка esbuild в один файл `dist/index.js`), тесты vitest + `mongodb-memory-server`
+      (replica set) зелёные, бандл проверен на живом `mongod` 8.3 в replica set. Юнит, конфиг
+      nginx, workflow `deploy-server.yml` и инструкция `docs/SERVER_SETUP.md` написаны.
+      Осталось: разовая настройка VPS по `docs/SERVER_SETUP.md` (пользователь), секрет
+      `DEPLOY_SERVER_PATH`, первый `workflow_dispatch` и проверка health снаружи.
 - [ ] 3. `[server, shared, client]` Аутентификация: Google id_token → свой JWT + refresh
       (`sessions`), `/api/me`; Login на Google Identity Services
 - [ ] 4. `[server]` API сущностей + перенос логики (балансы/долги в транзакциях Mongo, доступ
