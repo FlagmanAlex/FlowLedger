@@ -113,6 +113,10 @@
 - [ ] `[interfaces, shared, client, mobile]` Регулярные операции (`recurringTemplates` в модели
       уже заложены — тип и Security Rules есть, нет исполнителя расписания и UI). Вторая
       premium-фича.
+- [ ] `[server, interfaces, shared, client, mobile]` Импорт чека по QR — позиции чека через
+      proverkacheka.com (прокси на VPS, токен на сервере), операции разбиваются по категориям,
+      premium-фича. Обсуждено 2026-10-04, план: `.claude/plans/receipt-qr.md`. Не начато —
+      первый шаг: регистрация на proverkacheka и сверка формата API/тарифа.
 - [ ] `[client, mobile]` Экспорт CSV/Excel
 - [ ] `[mobile, shared]` Push-уведомления (FCM)
 - [ ] `[interfaces, shared, client, mobile]` Вложения к операциям (Firebase Storage) — учесть, что
