@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { sumInRub, useArchiveWallet, useHolders, useRubRates, useUpdateWallet, useWallets } from '@flowledger/shared';
+import {
+  rubRate,
+  sumInRub,
+  useArchiveWallet,
+  useHolders,
+  useRubRates,
+  useTransferRubRates,
+  useUpdateWallet,
+  useWallets,
+} from '@flowledger/shared';
 import type { Wallet } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -19,7 +28,8 @@ export function Wallets() {
   const { user, ownerId } = useOutletContext<MainOutletContext>();
   const { data: wallets, isLoading, error } = useWallets(ownerId);
   const { data: holders, error: holdersError } = useHolders(ownerId);
-  const { data: rubRates, isLoading: ratesLoading, error: ratesError } = useRubRates();
+  const { data: transferRates, isLoading: transferRatesLoading } = useTransferRubRates(ownerId, wallets);
+  const { data: cbrRates, isLoading: cbrRatesLoading } = useRubRates();
   const archiveWallet = useArchiveWallet();
   const updateWallet = useUpdateWallet();
   const [openWalletId, setOpenWalletId] = useState<string | null>(null);
@@ -78,30 +88,37 @@ export function Wallets() {
     );
   }
 
-  /** Итог блока кошельков в рублях по курсу ЦБ. Если все кошельки в рублях —
-   *  итог тоже показываем (просто сумма), курсы для этого не нужны. */
+  /** Итог блока кошельков в рублях. Курс валюты — по последнему реальному
+   *  переводу между кошельками (см. rubRatesFromTransfers), а для валют, по
+   *  которым переводов в рубли не было, — запасной курс ЦБ. Валюты, для
+   *  которых не нашлось ни того, ни другого, в итог не входят. */
   function blockTotal(list: Wallet[]) {
     if (list.length === 0) return null;
-    const allRub = list.every((w) => w.currency.toUpperCase() === 'RUB');
-    if (!allRub && ratesLoading) {
-      return <div className="wallets-total"><span className="wallets-total__label">Итого</span><span className="wallets-total__note">загрузка курсов…</span></div>;
+    const foreign = [...new Set(list.map((w) => w.currency.toUpperCase()).filter((c) => c !== 'RUB'))];
+    if (foreign.length > 0 && (transferRatesLoading || (cbrRatesLoading && foreign.some((c) => rubRate(transferRates, c) === undefined)))) {
+      return (
+        <div className="wallets-total">
+          <span className="wallets-total__label">Итого</span>
+          <span className="wallets-total__note">загрузка курсов…</span>
+        </div>
+      );
     }
+    const byCbr = foreign.filter((c) => rubRate(transferRates, c) === undefined && rubRate(cbrRates, c) !== undefined);
+    const rates = { ...cbrRates, ...transferRates };
     const { total, missing } = sumInRub(
       list.map((w) => ({ amount: w.balance, currency: w.currency })),
-      allRub ? { RUB: 1 } : rubRates,
+      rates,
     );
-    const hasForeign = list.some((w) => w.currency.toUpperCase() !== 'RUB');
+    const notes = [
+      byCbr.length > 0 ? `по ЦБ: ${byCbr.join(', ')}` : null,
+      missing.length > 0 ? `без ${missing.join(', ')}` : null,
+    ].filter(Boolean);
     return (
       <div className="wallets-total">
         <span className="wallets-total__label">
-          Итого{hasForeign ? ' в RUB' : ''}
-          {hasForeign && !ratesError && <span className="wallets-total__note"> по курсу ЦБ</span>}
-          {missing.length > 0 && (
-            <span className="wallets-total__note">
-              {ratesError ? ' (курсы недоступны, без ' : ' (без '}
-              {missing.join(', ')})
-            </span>
-          )}
+          Итого{foreign.length > 0 ? ' в RUB' : ''}
+          {foreign.length > 0 && <span className="wallets-total__note"> по курсу переводов</span>}
+          {notes.length > 0 && <span className="wallets-total__note"> ({notes.join('; ')})</span>}
         </span>
         <span className="wallets-total__amount">{formatAmount(total)} RUB</span>
       </div>
