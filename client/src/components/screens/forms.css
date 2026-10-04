@@ -24,6 +24,34 @@
   white-space: nowrap;
 }
 
+.wallets-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--divider);
+}
+
+.wallets-total__label {
+  font-size: var(--fs-13);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+}
+
+.wallets-total__note {
+  font-weight: normal;
+  color: var(--text-tertiary);
+}
+
+.wallets-total__amount {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  white-space: nowrap;
+}
+
 .wallets-archived {
   margin-top: var(--space-2);
 }

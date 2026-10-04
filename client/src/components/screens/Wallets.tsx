@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { useArchiveWallet, useHolders, useUpdateWallet, useWallets } from '@flowledger/shared';
+import { sumInRub, useArchiveWallet, useHolders, useRubRates, useUpdateWallet, useWallets } from '@flowledger/shared';
 import type { Wallet } from '@flowledger/interfaces';
 import type { MainOutletContext } from '@/components/layouts/MainLayout';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -19,6 +19,7 @@ export function Wallets() {
   const { user, ownerId } = useOutletContext<MainOutletContext>();
   const { data: wallets, isLoading, error } = useWallets(ownerId);
   const { data: holders, error: holdersError } = useHolders(ownerId);
+  const { data: rubRates, isLoading: ratesLoading, error: ratesError } = useRubRates();
   const archiveWallet = useArchiveWallet();
   const updateWallet = useUpdateWallet();
   const [openWalletId, setOpenWalletId] = useState<string | null>(null);
@@ -77,6 +78,36 @@ export function Wallets() {
     );
   }
 
+  /** Итог блока кошельков в рублях по курсу ЦБ. Если все кошельки в рублях —
+   *  итог тоже показываем (просто сумма), курсы для этого не нужны. */
+  function blockTotal(list: Wallet[]) {
+    if (list.length === 0) return null;
+    const allRub = list.every((w) => w.currency.toUpperCase() === 'RUB');
+    if (!allRub && ratesLoading) {
+      return <div className="wallets-total"><span className="wallets-total__label">Итого</span><span className="wallets-total__note">загрузка курсов…</span></div>;
+    }
+    const { total, missing } = sumInRub(
+      list.map((w) => ({ amount: w.balance, currency: w.currency })),
+      allRub ? { RUB: 1 } : rubRates,
+    );
+    const hasForeign = list.some((w) => w.currency.toUpperCase() !== 'RUB');
+    return (
+      <div className="wallets-total">
+        <span className="wallets-total__label">
+          Итого{hasForeign ? ' в RUB' : ''}
+          {hasForeign && !ratesError && <span className="wallets-total__note"> по курсу ЦБ</span>}
+          {missing.length > 0 && (
+            <span className="wallets-total__note">
+              {ratesError ? ' (курсы недоступны, без ' : ' (без '}
+              {missing.join(', ')})
+            </span>
+          )}
+        </span>
+        <span className="wallets-total__amount">{formatAmount(total)} RUB</span>
+      </div>
+    );
+  }
+
   /** Долгое нажатие на кошелёк в активном списке (см. ReorderableList) меняет
    *  его sortOrder — порядок дальше используется везде, где выводится
    *  список кошельков (этот экран, WalletPicker в операциях/переводах). */
@@ -127,6 +158,7 @@ export function Wallets() {
             onReorder={handleReorder}
             renderItem={(w, _dragging, handleProps) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id), handleProps)}
           />
+          {blockTotal(activeWallets)}
         </section>
       )}
 
@@ -144,6 +176,7 @@ export function Wallets() {
                 onReorder={handleReorder}
                 renderItem={(w, _dragging, handleProps) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id), handleProps)}
               />
+              {blockTotal(holderWallets)}
             </section>
           );
         })}
@@ -157,6 +190,7 @@ export function Wallets() {
             onReorder={handleReorder}
             renderItem={(w, _dragging, handleProps) => walletRow(w, 'Архив', 'danger', () => archiveWallet.mutate(w.id), handleProps)}
           />
+          {blockTotal(activeWallets.filter((w) => !w.holderId))}
         </section>
       )}
 
