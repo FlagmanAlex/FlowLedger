@@ -36,6 +36,18 @@ jobs:
       - name: Build
         run: npm run build:server
 
+      # Защита: пустой DEPLOY_SERVER_PATH превратил бы rsync --delete в синхронизацию
+      # в домашний каталог DEPLOY_USER с удалением всего, что там лежит. Пока секрет не
+      # заведён (сервер не настроен по docs/SERVER_SETUP.md) — падаем до rsync.
+      - name: Check server deploy is configured
+        env:
+          DEPLOY_SERVER_PATH: ${{ secrets.DEPLOY_SERVER_PATH }}
+        run: |
+          if [ -z "$DEPLOY_SERVER_PATH" ] || [ "$DEPLOY_SERVER_PATH" = "/" ]; then
+            echo "Секрет DEPLOY_SERVER_PATH не задан — VPS ещё не настроен (docs/SERVER_SETUP.md)" >&2
+            exit 1
+          fi
+
       - name: Add server to known_hosts
         run: |
           mkdir -p ~/.ssh
