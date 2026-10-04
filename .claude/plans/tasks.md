@@ -6,6 +6,28 @@
 свой `CLAUDE.md` (`client/`, `mobile/`, `shared/`, `interfaces/`), который ссылается сюда же по
 тегу, а не дублирует текст.
 
+## ⚡ ПРИОРИТЕТ: миграция Firestore + Firebase Auth → свой сервер с MongoDB
+Решение пользователя 2026-10-04, план: `.claude/plans/mongo-migration.md`. Делается первым, до
+импорта чеков и прочих фич. После миграции часть пунктов ниже про Firebase (Security Rules тесты,
+деплой правил, Google Sign-In через Firebase на mobile) становится неактуальной — архивировать на
+этапе «Уборка».
+
+- [ ] 1. `[server]` Подготовка: от пользователя — версии Mongo/Node на VPS, пользователь/база в
+      Mongo, права на рестарт сервиса, nginx, прод-домен (список — в плане)
+- [ ] 2. `[server]` Каркас `server/` (Fastify + mongodb + zod), `/api/health`, systemd, nginx
+      `/flowledger/api/`, `deploy-server.yml`
+- [ ] 3. `[server, shared, client]` Аутентификация: Google id_token → свой JWT + refresh
+      (`sessions`), `/api/me`; Login на Google Identity Services
+- [ ] 4. `[server]` API сущностей + перенос логики (балансы/долги в транзакциях Mongo, доступ
+      владелец/участник, приглашения), интеграционные тесты
+- [ ] 5. `[shared, client]` `shared` на HTTP-клиент (те же сигнатуры репозиториев и хуков), удалить
+      `firebase/`
+- [ ] 6. `[server]` Скрипт миграции данных из Firestore/Firebase Auth (dry-run, проверки, сохранение
+      id пользователей)
+- [ ] 7. Бэкапы Mongo (`mongodump` + копия вне VPS), cutover на проде
+- [ ] 8. Уборка: удалить Firebase-артефакты, обновить `memory.md`/docs, архивировать устаревшее
+- [ ] `[mobile]` Вход на mobile через наш `/api/auth/google` — после этапов 3–5
+
 ## Единый Firebase-проект — открытые пункты
 Реализация реверта с BYO-Firebase на единый проект закрыта — см.
 `.claude/archive/tasks/single-project-pivot.md`. Открытые продолжения:
@@ -115,8 +137,8 @@
       premium-фича.
 - [ ] `[server, interfaces, shared, client, mobile]` Импорт чека по QR — позиции чека через
       proverkacheka.com (прокси на VPS, токен на сервере), операции разбиваются по категориям,
-      premium-фича. Обсуждено 2026-10-04, план: `.claude/plans/receipt-qr.md`. Не начато —
-      первый шаг: регистрация на proverkacheka и сверка формата API/тарифа.
+      premium-фича. Обсуждено 2026-10-04, план: `.claude/plans/receipt-qr.md`. **Ждёт миграции на
+      MongoDB** (см. приоритетный раздел выше) — делается уже на новом сервере.
 - [ ] `[client, mobile]` Экспорт CSV/Excel
 - [ ] `[mobile, shared]` Push-уведомления (FCM)
 - [ ] `[interfaces, shared, client, mobile]` Вложения к операциям (Firebase Storage) — учесть, что
