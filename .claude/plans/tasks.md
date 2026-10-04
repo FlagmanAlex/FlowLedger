@@ -6,6 +6,53 @@
 свой `CLAUDE.md` (`client/`, `mobile/`, `shared/`, `interfaces/`), который ссылается сюда же по
 тегу, а не дублирует текст.
 
+## ⚡ ПРИОРИТЕТ: миграция Firestore + Firebase Auth → свой сервер с MongoDB
+Решение пользователя 2026-10-04, план: `.claude/plans/mongo-migration.md`. Делается первым, до
+импорта чеков и прочих фич. После миграции часть пунктов ниже про Firebase (Security Rules тесты,
+деплой правил, Google Sign-In через Firebase на mobile) становится неактуальной — архивировать на
+этапе «Уборка».
+
+**🛑 Блокеры — разобрать первыми в следующей сессии (выяснено 2026-10-04):**
+- [ ] **Куда на самом деле деплоится клиент.** SSH на `DEPLOY_HOST` приветствует
+      `Welcome to LTD BeGet SSH Server 'crusader'` — похоже на **виртуальный хостинг Beget**, а не
+      VPS. На виртуальном хостинге обычно нельзя держать постоянный Node-процесс, systemd, `sudo`,
+      править nginx — а всё это заложено в каркас `server/` и `docs/SERVER_SETUP.md`. Спросить
+      пользователя: MongoDB на этой же машине или на отдельном VPS? Если клиент на хостинге —
+      варианты: (а) API на машине с Mongo, клиент остаётся на хостинге (другой домен → CORS,
+      cookie между доменами, свой TLS); (б) **рекомендовано** — перенести и клиент на машину с
+      Mongo, всё на одном домене, как заложено в каркасе. От ответа зависят `docs/SERVER_SETUP.md`,
+      `deploy-server.yml` и, возможно, `deploy.yml`.
+- [ ] **Деплой клиента сломан: SSH-ключ отвергнут.** `deploy.yml` (run #59, 2026-10-04, ветка
+      `ccr-77797422-jpnskw`) — сборка прошла, rsync упал: `Permission denied (publickey,password)`.
+      27.09 с тем же секретом `DEPLOY_SSH_KEY` всё работало → ключ `flowledger-deploy` убран из
+      `authorized_keys`/сброшен доступ/блок по IP на стороне Beget. Чинит пользователь в панели
+      Beget; код не виноват. Пока не починено, **любой** деплой клиента падает, прод остаётся на
+      версии от 27.09.
+- [ ] После решения блокеров — следующий этап кода: **3. Аутентификация** (каркас готов, от
+      блокеров код этапа 3 не зависит).
+
+- [ ] 1. `[server]` Подготовка: от пользователя — версии Mongo/Node на VPS, пользователь/база в
+      Mongo, права на рестарт сервиса, nginx, прод-домен (список — в плане)
+- [ ] 2. `[server]` Каркас `server/` (Fastify + mongodb + zod), `/api/health`, systemd, nginx
+      `/flowledger/api/`, `deploy-server.yml`. **Код готов 2026-10-04**: workspace `server/`
+      (конфиг через zod, подключение к Mongo, `GET /api/health` с ping базы, graceful shutdown по
+      SIGTERM, сборка esbuild в один файл `dist/index.js`), тесты vitest + `mongodb-memory-server`
+      (replica set) зелёные, бандл проверен на живом `mongod` 8.3 в replica set. Юнит, конфиг
+      nginx, workflow `deploy-server.yml` и инструкция `docs/SERVER_SETUP.md` написаны.
+      Осталось: разовая настройка VPS по `docs/SERVER_SETUP.md` (пользователь), секрет
+      `DEPLOY_SERVER_PATH`, первый `workflow_dispatch` и проверка health снаружи.
+- [ ] 3. `[server, shared, client]` Аутентификация: Google id_token → свой JWT + refresh
+      (`sessions`), `/api/me`; Login на Google Identity Services
+- [ ] 4. `[server]` API сущностей + перенос логики (балансы/долги в транзакциях Mongo, доступ
+      владелец/участник, приглашения), интеграционные тесты
+- [ ] 5. `[shared, client]` `shared` на HTTP-клиент (те же сигнатуры репозиториев и хуков), удалить
+      `firebase/`
+- [ ] 6. `[server]` Скрипт миграции данных из Firestore/Firebase Auth (dry-run, проверки, сохранение
+      id пользователей)
+- [ ] 7. Бэкапы Mongo (`mongodump` + копия вне VPS), cutover на проде
+- [ ] 8. Уборка: удалить Firebase-артефакты, обновить `memory.md`/docs, архивировать устаревшее
+- [ ] `[mobile]` Вход на mobile через наш `/api/auth/google` — после этапов 3–5
+
 ## Единый Firebase-проект — открытые пункты
 Реализация реверта с BYO-Firebase на единый проект закрыта — см.
 `.claude/archive/tasks/single-project-pivot.md`. Открытые продолжения:
@@ -113,6 +160,10 @@
 - [ ] `[interfaces, shared, client, mobile]` Регулярные операции (`recurringTemplates` в модели
       уже заложены — тип и Security Rules есть, нет исполнителя расписания и UI). Вторая
       premium-фича.
+- [ ] `[server, interfaces, shared, client, mobile]` Импорт чека по QR — позиции чека через
+      proverkacheka.com (прокси на VPS, токен на сервере), операции разбиваются по категориям,
+      premium-фича. Обсуждено 2026-10-04, план: `.claude/plans/receipt-qr.md`. **Ждёт миграции на
+      MongoDB** (см. приоритетный раздел выше) — делается уже на новом сервере.
 - [ ] `[client, mobile]` Экспорт CSV/Excel
 - [ ] `[mobile, shared]` Push-уведомления (FCM)
 - [ ] `[interfaces, shared, client, mobile]` Вложения к операциям (Firebase Storage) — учесть, что

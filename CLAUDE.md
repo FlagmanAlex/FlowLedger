@@ -90,11 +90,11 @@
 ## Контекст по workspace'ам
 
 У каждого npm workspace — свой короткий `CLAUDE.md` в его корне: `client/CLAUDE.md`,
-`mobile/CLAUDE.md`, `shared/CLAUDE.md`, `interfaces/CLAUDE.md`. Claude Code подхватывает его
+`mobile/CLAUDE.md`, `shared/CLAUDE.md`, `interfaces/CLAUDE.md`, `server/CLAUDE.md`. Claude Code подхватывает его
 автоматически при работе внутри этой директории. Каждый такой файл — не дубликат
 `memory.md`/`tasks.md`, а указатель: роль workspace'а в двух-трёх предложениях + ссылка сюда и в
 `.claude/plans/tasks.md`, отфильтрованная по тегу этого workspace (`[client]`, `[mobile]`,
-`[shared]`, `[interfaces]` — теги проставлены прямо в пунктах `tasks.md`).
+`[shared]`, `[interfaces]`, `[server]` — теги проставлены прямо в пунктах `tasks.md`).
 
 При заведении нового workspace — заводи для него такой же `CLAUDE.md` по этому шаблону, а новые
 задачи в `tasks.md` сразу помечай тегом (можно несколькими, если фича сквозная).
