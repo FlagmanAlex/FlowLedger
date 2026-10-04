@@ -35,8 +35,8 @@
 - Node + TS (Fastify или Express), systemd-сервис; nginx проксирует `/flowledger/api/*`.
 - `POST /api/receipts/fetch` принимает `{ qrraw }` и `Authorization: Bearer <Firebase ID token>`.
   - Проверка токена — `firebase-admin` `verifyIdToken` (работает на Spark).
-  - **Проверка premium**: читаем `users/{uid}.plan` через Admin SDK. Открытый вопрос:
-    проверять план самого пользователя или владельца базы (`activeOwnerId`) — см. ниже.
+  - **Проверка premium**: читаем `plan` владельца базы (`users/{uid}.activeOwnerId`, иначе сам
+    `uid`) через Admin SDK.
   - Лимит запросов на пользователя в сутки (защита от расхода платных запросов).
   - Ответ — нормализованный `NormalizedReceipt`, не сырой формат proverkacheka.
 - Интерфейс `ReceiptProvider.fetch({ fn, fd, fp, t, s, n }) → NormalizedReceipt`. Первая
@@ -123,10 +123,14 @@ ReceiptItem { name, price, quantity, sum, nds?, categoryId? }
 5. Автокатегоризация.
 6. `mobile`.
 
+## Решено 2026-10-04
+- **Premium проверяется у владельца базы** (`activeOwnerId`, иначе сам пользователь):
+  premium покупается на базу, участники общего доступа пользуются им.
+- **Тестирование premium** до интеграции подписки — пользователь вручную выставляет себе
+  `plan: 'premium'` в `users/{uid}` через Firebase Console.
+
 ## Открытые вопросы
-- **Чей premium проверять при общем доступе** — пользователя или владельца базы? Предложение:
-  владельца (`activeOwnerId`): premium покупается на базу, участники семьи пользуются им.
-- **Как тестировать premium**, пока подписка не интегрирована (`plan` у всех `free`): вручную
-  выставить `plan: 'premium'` своему `users/{uid}` в Firebase Console (клиенту правила это
-  запрещают, консоли — нет).
 - Конкретные значения лимитов (запросов в сутки на пользователя) — после выяснения тарифа.
+- Возможная миграция Firestore → собственная MongoDB (обсуждается 2026-10-04): если решится,
+  прокси из п.1 становится полноценным API-бэкендом, а `receipts` сразу заводится в Mongo, а не в
+  Firestore.
