@@ -20,4 +20,5 @@ export * from './hooks/useDebts.js';
 export * from './hooks/useCounterparties.js';
 export * from './hooks/useDashboard.js';
 export * from './hooks/useSharing.js';
+export * from './hooks/useRubRates.js';
 export * from './validation/schemas.js';
