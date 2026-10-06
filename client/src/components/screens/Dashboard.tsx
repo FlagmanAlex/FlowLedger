@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import {
+  sumInRub,
   useCategories,
+  useCombinedRubRates,
   useCounterparties,
   useDashboard,
   useDebts,
@@ -54,6 +56,21 @@ function monthOptionsFromTrend(monthlyTrend: MonthlyTrendPoint[]): { value: stri
     .map((value) => ({ value, label: monthLabel(value) }));
 }
 
+/** Сколько последних календарных месяцев показывать в тренде. */
+const TREND_MONTHS = 6;
+
+/** Последние TREND_MONTHS месяцев подряд, заканчивая текущим — включая
+ *  месяцы без операций, чтобы столбики шли по календарю без пропусков. */
+function lastMonths(count: number): string[] {
+  const now = new Date();
+  return Array.from({ length: count }, (_, i) => monthKey(new Date(now.getFullYear(), now.getMonth() - (count - 1 - i), 1)));
+}
+
+/** Компактная сумма для подписи под столбиком: без копеек. */
+function formatCompact(value: number): string {
+  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
+}
+
 export function Dashboard() {
   const { ownerId } = useOutletContext<MainOutletContext>();
   const { data: wallets } = useWallets(ownerId);
@@ -65,6 +82,7 @@ export function Dashboard() {
   );
   const walletIdSet = walletIds ? new Set(walletIds) : undefined;
   const { summary, isLoading, error } = useDashboard(ownerId, { walletIds });
+  const rubRates = useCombinedRubRates(ownerId, wallets);
   const { data: categories } = useCategories(ownerId);
   const { data: debts } = useDebts(ownerId);
   const { data: counterparties } = useCounterparties(ownerId);
@@ -103,17 +121,28 @@ export function Dashboard() {
   const walletById = new Map((wallets ?? []).map((w) => [w.id, w]));
   const counterpartyById = new Map((counterparties ?? []).map((c) => [c.id, c]));
 
-  const trendByCurrency = new Map<string, MonthlyTrendPoint[]>();
-  for (const p of summary.monthlyTrend) {
-    const arr = trendByCurrency.get(p.currency) ?? [];
-    arr.push(p);
-    trendByCurrency.set(p.currency, arr);
-  }
-  const trendBlocks = Array.from(trendByCurrency.entries()).map(([currency, points]) => {
-    const trendPoints = points.slice(-6);
-    const trendMax = Math.max(1, ...trendPoints.flatMap((p) => [p.income, p.expense]));
-    return { currency, trendPoints, trendMax };
+  // Тренд — одной карточкой в рублях: доходы и расходы каждой валюты
+  // пересчитываются по курсу последних переводов (запасной — ЦБ), как итоги
+  // на экране кошельков. Валюты без курса в сумму не входят и подписываются.
+  const trendMissing = new Set<string>();
+  const trendByCbr = new Set<string>();
+  const trendPoints = lastMonths(TREND_MONTHS).map((month) => {
+    const points = summary.monthlyTrend.filter((p) => p.month === month);
+    const income = sumInRub(points.map((p) => ({ amount: p.income, currency: p.currency })), rubRates.rates);
+    const expense = sumInRub(points.map((p) => ({ amount: p.expense, currency: p.currency })), rubRates.rates);
+    for (const c of [...income.missing, ...expense.missing]) trendMissing.add(c);
+    for (const p of points) {
+      if (p.currency.toUpperCase() !== MAIN_CURRENCY && (p.income || p.expense) && rubRates.byCbr(p.currency)) {
+        trendByCbr.add(p.currency);
+      }
+    }
+    return { month, income: income.total, expense: expense.total };
   });
+  const trendMax = Math.max(1, ...trendPoints.flatMap((p) => [p.income, p.expense]));
+  const trendNotes = [
+    trendByCbr.size > 0 ? `по ЦБ: ${[...trendByCbr].join(', ')}` : null,
+    trendMissing.size > 0 ? `без ${[...trendMissing].join(', ')}` : null,
+  ].filter(Boolean);
 
   const lastMonth = summary.monthlyTrend.at(-1)?.month;
   const deltas = lastMonth
@@ -365,30 +394,52 @@ export function Dashboard() {
         )}
       </section>
 
-      {trendBlocks.map(({ currency, trendPoints, trendMax }) => (
-        <section key={currency} className="neo-card">
-          <h2 className="section-title">
-            Тренд по месяцам{trendBlocks.length > 1 ? ` — ${currency}` : ''}
+      <section className="neo-card">
+        <div className="trend-header">
+          <h2 className="section-title" style={{ margin: 0 }}>
+            Доходы и расходы по месяцам, {MAIN_CURRENCY}
           </h2>
-          <div className="trend-bars">
-            {trendPoints.map((p) => (
-              <div key={p.month} className="trend-month">
-                <div className="trend-bar-pair">
-                  <div
-                    className="trend-bar trend-bar--income"
-                    style={{ height: `${(p.income / trendMax) * 64}px` }}
-                  />
-                  <div
-                    className="trend-bar trend-bar--expense"
-                    style={{ height: `${(p.expense / trendMax) * 64}px` }}
-                  />
-                </div>
-                <span className="trend-label">{formatMonthShort(p.month)}</span>
-              </div>
-            ))}
+          <div className="trend-legend">
+            <span className="trend-legend__item">
+              <span className="trend-legend__dot trend-bar--income" /> доход
+            </span>
+            <span className="trend-legend__item">
+              <span className="trend-legend__dot trend-bar--expense" /> расход
+            </span>
           </div>
-        </section>
-      ))}
+        </div>
+        {rubRates.isLoading ? (
+          <p className="state-message">Загрузка курсов…</p>
+        ) : (
+          <div className="trend-bars">
+            {trendPoints.map((p) => {
+              const delta = p.income - p.expense;
+              return (
+                <div key={p.month} className="trend-month">
+                  <div className="trend-bar-pair">
+                    <div
+                      className="trend-bar trend-bar--income"
+                      style={{ height: `${(p.income / trendMax) * 100}%` }}
+                    />
+                    <div
+                      className="trend-bar trend-bar--expense"
+                      style={{ height: `${(p.expense / trendMax) * 100}%` }}
+                    />
+                  </div>
+                  <span className="trend-label">{formatMonthShort(p.month)}</span>
+                  <span className="trend-value amount-positive">+{formatCompact(p.income)}</span>
+                  <span className="trend-value amount-negative">−{formatCompact(p.expense)}</span>
+                  <span className={`trend-value trend-value--delta ${delta >= 0 ? 'amount-positive' : 'amount-negative'}`}>
+                    {delta >= 0 ? '+' : '−'}
+                    {formatCompact(Math.abs(delta))}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {trendNotes.length > 0 && <p className="trend-note">Пересчёт по курсу переводов ({trendNotes.join('; ')})</p>}
+      </section>
 
       <section className="neo-card">
         <div className="recent-header">

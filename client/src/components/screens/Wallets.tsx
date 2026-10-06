@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
-  rubRate,
   sumInRub,
   useArchiveWallet,
   useHolders,
-  useRubRates,
-  useTransferRubRates,
+  rubRate,
+  useCombinedRubRates,
   useUpdateWallet,
   useWallets,
 } from '@flowledger/shared';
@@ -28,8 +27,7 @@ export function Wallets() {
   const { user, ownerId } = useOutletContext<MainOutletContext>();
   const { data: wallets, isLoading, error } = useWallets(ownerId);
   const { data: holders, error: holdersError } = useHolders(ownerId);
-  const { data: transferRates, isLoading: transferRatesLoading } = useTransferRubRates(ownerId, wallets);
-  const { data: cbrRates, isLoading: cbrRatesLoading } = useRubRates();
+  const rubRates = useCombinedRubRates(ownerId, wallets);
   const archiveWallet = useArchiveWallet();
   const updateWallet = useUpdateWallet();
   const [openWalletId, setOpenWalletId] = useState<string | null>(null);
@@ -95,7 +93,7 @@ export function Wallets() {
   function blockTotal(list: Wallet[]) {
     if (list.length === 0) return null;
     const foreign = [...new Set(list.map((w) => w.currency.toUpperCase()).filter((c) => c !== 'RUB'))];
-    if (foreign.length > 0 && (transferRatesLoading || (cbrRatesLoading && foreign.some((c) => rubRate(transferRates, c) === undefined)))) {
+    if (foreign.length > 0 && (rubRates.isLoading || (rubRates.isCbrLoading && foreign.some((c) => rubRate(rubRates.rates, c) === undefined)))) {
       return (
         <div className="wallets-total">
           <span className="wallets-total__label">Итого</span>
@@ -103,11 +101,10 @@ export function Wallets() {
         </div>
       );
     }
-    const byCbr = foreign.filter((c) => rubRate(transferRates, c) === undefined && rubRate(cbrRates, c) !== undefined);
-    const rates = { ...cbrRates, ...transferRates };
+    const byCbr = foreign.filter(rubRates.byCbr);
     const { total, missing } = sumInRub(
       list.map((w) => ({ amount: w.balance, currency: w.currency })),
-      rates,
+      rubRates.rates,
     );
     const notes = [
       byCbr.length > 0 ? `по ЦБ: ${byCbr.join(', ')}` : null,

@@ -119,3 +119,21 @@ export function useTransferRubRates(userId: string | undefined, wallets: Wallet[
   const data = transfers.data && wallets ? rubRatesFromTransfers(transfers.data, wallets) : undefined;
   return { data, isLoading: transfers.isLoading, error: transfers.error };
 }
+
+/** Итоговые курсы к рублю: по последним переводам (useTransferRubRates), а
+ *  для валют без переводов — запасной курс ЦБ (useRubRates). byCbr говорит,
+ *  посчитана ли валюта по ЦБ — чтобы UI мог это подписать. */
+export function useCombinedRubRates(userId: string | undefined, wallets: Wallet[] | undefined) {
+  const transfer = useTransferRubRates(userId, wallets);
+  const cbr = useRubRates();
+  const rates: RubRates = { ...cbr.data, ...transfer.data };
+  return {
+    rates,
+    /** Курсы по переводам ещё грузятся — без них итог был бы по ЦБ и «прыгал». */
+    isLoading: transfer.isLoading,
+    /** ЦБ ещё грузится — валюты без переводов пока без курса. */
+    isCbrLoading: cbr.isLoading,
+    byCbr: (currency: string) =>
+      rubRate(transfer.data, currency) === undefined && rubRate(cbr.data, currency) !== undefined,
+  };
+}
