@@ -1,5 +1,6 @@
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair, type JWTPayload } from 'jose';
-import type { Db } from 'mongodb';
+import type { FastifyInstance } from 'fastify';
+import type { MongoClient } from 'mongodb';
 import type { AppDeps } from '../src/app.js';
 import { createGoogleVerifier } from '../src/auth/google.js';
 
@@ -33,9 +34,14 @@ export async function createFakeGoogle() {
   return { verifier: createGoogleVerifier([TEST_CLIENT_ID], keys), signIdToken };
 }
 
-export function testDeps(db: Db, verifyGoogleToken: AppDeps['auth']['verifyGoogleToken']): AppDeps {
+export function testDeps(
+  client: MongoClient,
+  dbName: string,
+  verifyGoogleToken: AppDeps['auth']['verifyGoogleToken'],
+): AppDeps {
   return {
-    db,
+    client,
+    db: client.db(dbName),
     auth: {
       jwtSecret: TEST_JWT_SECRET,
       verifyGoogleToken,
@@ -49,3 +55,19 @@ export function testDeps(db: Db, verifyGoogleToken: AppDeps['auth']['verifyGoogl
 export const rejectAllGoogleTokens: AppDeps['auth']['verifyGoogleToken'] = async () => {
   throw new Error('Google не используется в этом тесте');
 };
+
+/** Вход подменным Google-аккаунтом; возвращает access-токен и uid. */
+export async function loginAs(
+  app: FastifyInstance,
+  google: Awaited<ReturnType<typeof createFakeGoogle>>,
+  sub: string,
+) {
+  const idToken = await google.signIdToken({ sub, email: `${sub}@example.com`, name: sub });
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/auth/google',
+    payload: { idToken },
+  });
+  const body = response.json();
+  return { token: body.accessToken as string, uid: body.user.uid as string };
+}
