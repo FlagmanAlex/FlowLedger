@@ -76,6 +76,9 @@
       `flowledger-mongo-firewall`): снаружи TCP не проходит, replica set (PRIMARY + 2 SECONDARY) и
       health в порядке. Compass — через SSH-туннель.
       До этого откат — Firestore (не трогать ~2–4 недели).
+      2026-10-13 `firestore.rules` переведены в **только чтение**: вкладка со старым бандлом (загружен
+      до cutover) молча сохранила оплату в Firestore, а новая версия её не видела. Для отката на
+      Firestore — вернуть правила записи из истории git `firestore.rules`.
 - [ ] 8. Уборка (не раньше ~2026-10-27…11-10, когда откат на Firestore точно не нужен): удалить Firebase-артефакты, обновить `memory.md`/docs, архивировать устаревшее
 - [ ] `[mobile]` Вход на mobile через наш `/api/auth/google` — после этапов 3–5
 

@@ -1,13 +1,17 @@
 rules_version = '2';
 
-// Единый Firebase-проект продукта — изоляция данных между пользователями
-// через поле userId (а не отдельные проекты, как было в BYO-Firebase).
+// Firestore — ТОЛЬКО ЧТЕНИЕ (с cutover на MongoDB 2026-10-13).
 //
-// Общий доступ по приглашению (family sharing): userId в
-// wallets/categories/transactions/recurringTemplates — это id владельца
-// базы («workspace»), а не обязательно того, кто сейчас работает с
-// данными — см. hasAccess() и users/{ownerId}/members ниже. createdBy в
-// Transaction — фактический автор операции, отдельно от userId.
+// Данные живут на своём сервере (server/, MongoDB), Firestore оставлен
+// точкой отката до уборки (этап 8 .claude/plans/mongo-migration.md).
+// Запись запрещена целиком: иначе вкладка со старым бандлом (загружен до
+// cutover) молча сохраняет операции в Firestore, а новая версия их не видит.
+// Пусть старый клиент лучше падает с permission-denied.
+//
+// Чтение оставлено прежним (изоляция по userId + общий доступ через
+// users/{ownerId}/members) — для отката. Правила записи до cutover — в
+// истории git этого файла. Admin SDK (скрипт переноса данных) правила не
+// ограничивают.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -16,127 +20,57 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Есть ли у текущего пользователя доступ к базе владельца ownerId —
-    // сам владелец, либо участник из users/{ownerId}/members (принял
-    // приглашение, см. match ниже).
+    // Владелец базы ownerId либо участник из users/{ownerId}/members.
     function hasAccess(ownerId) {
       return request.auth != null &&
         (request.auth.uid == ownerId ||
          exists(/databases/$(database)/documents/users/$(ownerId)/members/$(request.auth.uid)));
     }
 
-    // plan меняется только доверенным бэкендом (Stripe/RevenueCat webhook
-    // через Admin SDK, который правила Firestore не ограничивают) — клиент
-    // не может сам себе выставить premium. activeOwnerId (на чью базу
-    // переключён пользователь) и остальные поля — self-service.
     match /users/{userId} {
       allow read: if isOwner(userId) ||
         (request.auth != null &&
          exists(/databases/$(database)/documents/users/$(userId)/members/$(request.auth.uid)));
-      allow create: if isOwner(userId) &&
-        request.resource.data.uid == userId &&
-        request.resource.data.plan == 'free';
-      allow update: if isOwner(userId) &&
-        request.resource.data.plan == resource.data.plan;
 
-      // Кому предоставлен доступ к базе этого пользователя (владельца).
-      // create: заявитель добавляет сам себя, только по ссылке на валидное
-      // pending-приглашение этого владельца, ещё не истёкшее — сам факт
-      // владения ссылкой (неугадываемый id инвайта) и есть авторизация,
-      // Cloud Function не нужна (см. memory.md — Spark-план).
       match /members/{memberId} {
-        function invite() {
-          return get(/databases/$(database)/documents/invites/$(request.resource.data.inviteId)).data;
-        }
-
         allow read: if isOwner(userId) || isOwner(memberId);
-        allow create: if isOwner(memberId) &&
-          request.resource.data.uid == memberId &&
-          invite().ownerId == userId &&
-          invite().status == 'pending' &&
-          invite().expiresAt > request.time.toMillis();
-        // Владелец отзывает доступ участника; участник сам покидает общий доступ.
-        allow delete: if isOwner(userId) || isOwner(memberId);
       }
     }
 
-    // Приглашение по ссылке /invite/{inviteId} — неугадываемый id документа
-    // это и есть секрет ссылки. Принятие/отклонение меняет только
-    // status(+acceptedBy/acceptedAt), владение базой не переносит само по
-    // себе — это делает users/{ownerId}/members выше.
     match /invites/{inviteId} {
       allow read: if request.auth != null;
-      allow create: if isOwner(request.resource.data.ownerId) &&
-        request.resource.data.status == 'pending';
-      // Принятие приглашения любым вошедшим пользователем, пока оно ещё не
-      // истекло и не обработано.
-      allow update: if request.auth != null &&
-        resource.data.status == 'pending' &&
-        resource.data.expiresAt > request.time.toMillis() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acceptedBy', 'acceptedAt']) &&
-        request.resource.data.status == 'accepted' &&
-        request.resource.data.acceptedBy == request.auth.uid;
-      // Отзыв владельцем ещё не принятого приглашения.
-      allow update: if isOwner(resource.data.ownerId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-        request.resource.data.status == 'revoked';
-      allow delete: if isOwner(resource.data.ownerId);
     }
 
-    match /wallets/{walletId} {
-      allow read, delete: if hasAccess(resource.data.userId);
-      allow create: if hasAccess(request.resource.data.userId);
-      allow update: if hasAccess(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+    match /wallets/{docId} {
+      allow read: if hasAccess(resource.data.userId);
     }
 
-    match /categories/{categoryId} {
-      allow read, delete: if hasAccess(resource.data.userId);
-      allow create: if hasAccess(request.resource.data.userId);
-      allow update: if hasAccess(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+    match /categories/{docId} {
+      allow read: if hasAccess(resource.data.userId);
     }
 
-    match /currencies/{currencyId} {
-      allow read, delete: if hasAccess(resource.data.userId);
-      allow create: if hasAccess(request.resource.data.userId);
-      allow update: if hasAccess(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+    match /currencies/{docId} {
+      allow read: if hasAccess(resource.data.userId);
     }
 
-    match /holders/{holderId} {
-      allow read, delete: if hasAccess(resource.data.userId);
-      allow create: if hasAccess(request.resource.data.userId);
-      allow update: if hasAccess(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+    match /holders/{docId} {
+      allow read: if hasAccess(resource.data.userId);
     }
 
-    match /transactions/{transactionId} {
-      allow read, delete: if hasAccess(resource.data.userId);
-      allow create: if hasAccess(request.resource.data.userId);
-      allow update: if hasAccess(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+    match /transactions/{docId} {
+      allow read: if hasAccess(resource.data.userId);
     }
 
-    match /recurringTemplates/{templateId} {
-      allow read, delete: if hasAccess(resource.data.userId);
-      allow create: if hasAccess(request.resource.data.userId);
-      allow update: if hasAccess(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+    match /recurringTemplates/{docId} {
+      allow read: if hasAccess(resource.data.userId);
     }
 
-    match /debts/{debtId} {
-      allow read, delete: if hasAccess(resource.data.userId);
-      allow create: if hasAccess(request.resource.data.userId);
-      allow update: if hasAccess(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+    match /debts/{docId} {
+      allow read: if hasAccess(resource.data.userId);
     }
 
-    match /counterparties/{counterpartyId} {
-      allow read, delete: if hasAccess(resource.data.userId);
-      allow create: if hasAccess(request.resource.data.userId);
-      allow update: if hasAccess(resource.data.userId) &&
-        request.resource.data.userId == resource.data.userId;
+    match /counterparties/{docId} {
+      allow read: if hasAccess(resource.data.userId);
     }
   }
 }
