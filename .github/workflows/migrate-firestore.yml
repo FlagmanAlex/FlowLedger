@@ -1,0 +1,81 @@
+name: Migrate Firestore to MongoDB
+
+# Разовый перенос данных Firestore + Firebase Auth → MongoDB на VPS (этап 6
+# миграции, .claude/plans/mongo-migration.md). Только ручной запуск.
+#   dry-run — выгрузка и проверка (количество, сверка балансов), в Mongo ничего не пишет;
+#   apply   — полная замена данных баз в Mongo содержимым выгрузки.
+# Выгрузка делается здесь (сервис-аккаунт Firebase), загрузка — на VPS
+# (пароль Mongo из ~/flowledger-server.env не покидает сервер, порты Mongo
+# наружу не нужны). Файл выгрузки удаляется с VPS сразу после загрузки.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run — только проверка; apply — загрузить в Mongo'
+        required: true
+        default: dry-run
+        type: choice
+        options: [dry-run, apply]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build import script
+        run: |
+          npm ci
+          npm run build:server
+
+      # Сервис-аккаунту FIREBASE_SERVICE_ACCOUNT нужны роли Cloud Datastore
+      # Viewer и Firebase Authentication Viewer (в дополнение к ролям деплоя правил).
+      - name: Export from Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/export"
+          cp server/scripts/firestore-export.mjs "$RUNNER_TEMP/export/"
+          cd "$RUNNER_TEMP/export"
+          install -m 600 /dev/null sa.json
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > sa.json
+          npm init -y > /dev/null
+          npm install --no-save --no-audit --no-fund firebase-admin@14
+          GOOGLE_APPLICATION_CREDENTIALS=sa.json node firestore-export.mjs export.json
+          rm sa.json
+
+      - name: Import on VPS
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+          install -m 600 /dev/null ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          TARGET="${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
+          ssh -i ~/.ssh/deploy_key "$TARGET" 'mkdir -p ~/migration && chmod 700 ~/migration'
+          scp -i ~/.ssh/deploy_key \
+            "$RUNNER_TEMP/export/export.json" \
+            server/dist/import-firestore.js server/dist/package.json \
+            "$TARGET:migration/"
+          FLAG=""
+          if [ "$MODE" = "apply" ]; then FLAG="--apply"; fi
+          ssh -i ~/.ssh/deploy_key "$TARGET" "FLAG='$FLAG' bash -s" <<'EOF'
+          cd ~/migration
+          status=0
+          node --env-file="$HOME/flowledger-server.env" import-firestore.js export.json $FLAG || status=$?
+          rm -f export.json
+          exit $status
+          EOF
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/export"
