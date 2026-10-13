@@ -110,13 +110,18 @@ curl https://api.wwms.ru/flowledger/api/health
 → `/var/backups/flowledger` (7 дней) → `rclone` в Google Drive, папка `FlowLedger-backups` (30 дней).
 
 1. rclone: `curl https://rclone.org/install.sh | bash`.
-2. Подключение Google Drive (от root): `rclone config` → `n` (new remote), имя `gdrive`, тип
-   `drive`, client_id/secret пусто, scope `1` (full access), остальное по умолчанию;
-   «Use web browser to automatically authenticate?» → `n` (на VPS браузера нет) — rclone покажет
-   команду `rclone authorize "drive" "..."`: выполнить её на своём компьютере (с установленным
-   rclone), войти в Google, полученный токен вставить обратно на VPS.
+2. Подключение Google Drive (от root, SSH с туннелем `ssh -L 53682:127.0.0.1:53682 flagman@api.wwms.ru`
+   — вход в Google идёт через браузер своего компьютера): `rclone config` → `n` (new remote), имя
+   `gdrive`, тип `drive`, scope `1` (full access), «Use web browser…» → `y`, ссылку
+   `http://127.0.0.1:53682/auth?...` открыть у себя. **Свой OAuth-клиент обязателен**: общий
+   client_id rclone Google отключает в 2026. В проекте `flowledger2` включён Google Drive API и
+   заведён OAuth-клиент типа Desktop app «rclone backups» (2026-10-13); подключён командой
+   `rclone config update gdrive client_id <id> client_secret <secret>` (сама запускает вход).
+   OAuth consent screen проекта должен быть в статусе *In production* — в *Testing* refresh-токен
+   живёт 7 дней, и бэкапы перестанут уходить.
 3. Скрипт: содержимое `server/deploy/flowledger-backup.sh` → `/usr/local/bin/flowledger-backup.sh`,
-   `chmod 700`. Проверка вручную: `/usr/local/bin/flowledger-backup.sh`.
+   `chmod 700`. Проверка вручную: `/usr/local/bin/flowledger-backup.sh`. Установлен 2026-10-13,
+   первый бэкап — 27 КБ.
 4. Cron (от root, `crontab -e`): `17 3 * * * /usr/local/bin/flowledger-backup.sh >> /var/log/flowledger-backup.log 2>&1`
 
 Восстановление (заменяет текущие коллекции содержимым архива):
