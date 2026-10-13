@@ -126,8 +126,9 @@ FlowLedger — учёт доходов/расходов, продаётся ка
   исходный путь через `location.state.from`, чтобы не залогиненный переход по ссылке не терял её.
 
 - **Запланирован уход с Firebase (2026-10-04)** — Firestore и Firebase Auth заменяются своим
-  сервером (`server/`, Node + MongoDB на том же VPS, Google-вход через свой OAuth/JWT). Пока это
-  план, а не текущее состояние — всё описанное выше про Firestore/правила актуально до cutover.
+  сервером (`server/`, Node + MongoDB на том же VPS, Google-вход через свой OAuth/JWT). Сервер
+  уже задеплоен (этап 2, только `/api/health`), но данные и вход пока на Firebase — всё описанное
+  выше про Firestore/правила актуально до cutover.
   План: `.claude/plans/mongo-migration.md`.
 
 ## Правила стиля
@@ -179,9 +180,18 @@ FlowLedger — учёт доходов/расходов, продаётся ка
   (auth/unauthorized-domain)` — список разрешённых доменов не деплоится через `firebase.json`/CLI,
   это отдельная настройка на стороне Firebase Auth, не привязанная к `rsync`-деплою клиента.
   Столкнулись и починили 2026-09-01.
-- **Бэкенд (Stripe/RevenueCat webhook) в этот деплой не входит** — деплоится только статика
-  клиента; для бэкенда потребуется отдельный workflow/systemd-сервис на том же сервере (см.
-  «Известные TODO» ниже).
+- **server/ → VPS** (с 2026-10-13, этап 2 миграции на MongoDB): `.github/workflows/deploy-server.yml`,
+  триггер — push в `main` (`server/**`, `interfaces/**`, `package*.json`) + `workflow_dispatch`.
+  Раннер: typecheck → тесты → esbuild-бандл (`dist/`: `index.js`, `package.json` с `type: module`,
+  `ecosystem.config.cjs`) → `rsync --delete` в `DEPLOY_SERVER_PATH`
+  (`/home/deploy-flowledger/flowledger-server`) → по SSH `pm2 startOrReload` + `pm2 save` →
+  health-check `127.0.0.1:3100/api/health`. Процесс живёт в **отдельном pm2 пользователя
+  `deploy-flowledger`** (без sudo; pm2 `root`/`flagman` на VPS — чужие, не трогать), автозапуск —
+  systemd-сервис `pm2-deploy-flowledger`. Секреты — `~deploy-flowledger/flowledger-server.env`
+  (вне каталога бандла). nginx: `location /flowledger/api/` → `127.0.0.1:3100/api/` в HTTPS-блоке
+  `/etc/nginx/sites-available/default`. Снаружи: `https://api.wwms.ru/flowledger/api/health`.
+  Подробно — `docs/SERVER_SETUP.md`. Будущие бэкенд-фичи (webhook подписки, чеки) — в этот же
+  сервер.
 - **`firestore.rules`/`firestore.indexes.json` → отдельный workflow**
   `.github/workflows/deploy-firestore-rules.yml`, триггер — push в `main` по путям
   `firestore.rules`/`firestore.indexes.json`/`.firebaserc`/`firebase.json` (не связан с
