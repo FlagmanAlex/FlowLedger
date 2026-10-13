@@ -104,9 +104,42 @@ curl https://api.wwms.ru/flowledger/api/health
 # {"status":"ok","db":"ok"}
 ```
 
-## До переноса прод-данных (этап 7 миграции)
-- **Закрыть порты Mongo снаружи.** Сейчас 27017–27019 опубликованы Docker'ом на `0.0.0.0`, файрвола
-  нет. Правило — в цепочке `DOCKER-USER` по внешнему интерфейсу (Docker обходит `ufw`); Compass —
-  через SSH-туннель под `flagman` (`directConnection=true`); будущие серверы replica set —
-  allowlist по IP.
-- **Бэкапы**: `mongodump` по cron с копией за пределы VPS.
+## Бэкапы (Google Drive)
+Скрипт `server/deploy/flowledger-backup.sh`: ежедневно `mongodump` базы `flowledger` из контейнера
+`mongodb-mongodb-1` (сжатый архив, учётка `flowledger` из `~deploy-flowledger/flowledger-server.env`)
+→ `/var/backups/flowledger` (7 дней) → `rclone` в Google Drive, папка `FlowLedger-backups` (30 дней).
+
+1. rclone: `curl https://rclone.org/install.sh | bash`.
+2. Подключение Google Drive (от root, SSH с туннелем `ssh -L 53682:127.0.0.1:53682 flagman@api.wwms.ru`
+   — вход в Google идёт через браузер своего компьютера): `rclone config` → `n` (new remote), имя
+   `gdrive`, тип `drive`, scope `1` (full access), «Use web browser…» → `y`, ссылку
+   `http://127.0.0.1:53682/auth?...` открыть у себя. **Свой OAuth-клиент обязателен**: общий
+   client_id rclone Google отключает в 2026. В проекте `flowledger2` включён Google Drive API и
+   заведён OAuth-клиент типа Desktop app «rclone backups» (2026-10-13); подключён командой
+   `rclone config update gdrive client_id <id> client_secret <secret>` (сама запускает вход).
+   OAuth consent screen проекта должен быть в статусе *In production* — в *Testing* refresh-токен
+   живёт 7 дней, и бэкапы перестанут уходить.
+3. Скрипт: содержимое `server/deploy/flowledger-backup.sh` → `/usr/local/bin/flowledger-backup.sh`,
+   `chmod 700`. Проверка вручную: `/usr/local/bin/flowledger-backup.sh`. Установлен 2026-10-13,
+   первый бэкап — 27 КБ.
+4. Cron (от root, `crontab -e`): `17 3 * * * /usr/local/bin/flowledger-backup.sh >> /var/log/flowledger-backup.log 2>&1`
+
+Восстановление (заменяет текущие коллекции содержимым архива):
+
+```bash
+MONGO_URI=$(grep '^MONGO_URI=' /home/deploy-flowledger/flowledger-server.env | cut -d= -f2-)
+docker exec -i -e MONGO_URI="$MONGO_URI" mongodb-mongodb-1 \
+  sh -c 'mongorestore --uri="$MONGO_URI" --archive --gzip --drop' < /var/backups/flowledger/<файл>.archive.gz
+```
+
+## Порты MongoDB закрыты снаружи
+Docker публикует 27017–27019 на `0.0.0.0`, а `ufw`/INPUT обходит — поэтому правило в цепочке
+`DOCKER-USER` по внешнему интерфейсу `eth0` (IPv6 — INPUT, его Docker отдаёт через docker-proxy):
+`server/deploy/mongo-firewall.sh` → `/usr/local/sbin/`, применяется юнитом
+`server/deploy/flowledger-mongo-firewall.service` после каждого старта Docker. Узлы replica set
+(сеть Docker) и процессы на VPS (сервер, бэкап) правило не задевает. Будущие узлы replica set на
+других серверах — их IP в `ALLOW_IPS` скрипта.
+
+Compass — через SSH-туннель: в подключении вкладка *Proxy/SSH* → *SSH with password/identity*,
+хост `api.wwms.ru`, пользователь `flagman`; строка подключения
+`mongodb://<админ>:<пароль>@127.0.0.1:27017/?directConnection=true&authSource=admin`.

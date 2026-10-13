@@ -69,10 +69,14 @@
       `firebase/`
 - [x] 6. `[server]` Скрипт миграции данных из Firestore/Firebase Auth (dry-run, проверки, сохранение
       id пользователей)
-- [ ] 7. Cutover — **выполнен 2026-10-13**. Осталось из этапа: бэкапы Mongo (`mongodump` по cron
-      + копия вне VPS) и закрыть порты Mongo 27017–27019 снаружи (Compass — через SSH-туннель).
+- [x] 7. Cutover — **выполнен 2026-10-13**. Бэкапы — **настроены 2026-10-13**: ежедневно 03:17
+      `mongodump` → `/var/backups/flowledger` (7 дней) → Google Drive `FlowLedger-backups` (30 дней),
+      rclone со своим OAuth-клиентом (см. `docs/SERVER_SETUP.md` → «Бэкапы»). Порты Mongo
+      27017–27019 закрыты снаружи 2026-10-13 (`DOCKER-USER` на `eth0` + юнит
+      `flowledger-mongo-firewall`): снаружи TCP не проходит, replica set (PRIMARY + 2 SECONDARY) и
+      health в порядке. Compass — через SSH-туннель.
       До этого откат — Firestore (не трогать ~2–4 недели).
-- [ ] 8. Уборка: удалить Firebase-артефакты, обновить `memory.md`/docs, архивировать устаревшее
+- [ ] 8. Уборка (не раньше ~2026-10-27…11-10, когда откат на Firestore точно не нужен): удалить Firebase-артефакты, обновить `memory.md`/docs, архивировать устаревшее
 - [ ] `[mobile]` Вход на mobile через наш `/api/auth/google` — после этапов 3–5
 
 ## Единый Firebase-проект — открытые пункты

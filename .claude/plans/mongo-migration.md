@@ -193,7 +193,8 @@ apply → сразу деплой клиента ветки. Между apply и
   `mongodb://flowledger:<пароль>@api.wwms.ru:27017,api.wwms.ru:27018,api.wwms.ru:27019/flowledger?replicaSet=rs0&authSource=flowledger`.
   Пользователь Mongo **`flowledger`** (`readWrite` на базу `flowledger`, authSource `flowledger`)
   создан 2026-10-13, пароль — только у пользователя (пойдёт в `/etc/flowledger/server.env`).
-  ⚠️ Порты 27017–27019 опубликованы на `0.0.0.0`, **файрвола нет** (`ufw` inactive, `DOCKER-USER`
+  ✅ Закрыто 2026-10-13 (см. `docs/SERVER_SETUP.md` → «Порты MongoDB закрыты снаружи»). Было:
+  порты 27017–27019 опубликованы на `0.0.0.0`, **файрвола нет** (`ufw` inactive, `DOCKER-USER`
   пуст, проверено 2026-10-13) — Mongo доступна из интернета, защищена только паролем. Закрыть
   до переноса прод-данных (правило в `DOCKER-USER` по внешнему интерфейсу).
   Решение пользователя 2026-10-13: снаружи 27017–27019 закрыть; **Compass — через SSH-туннель**
