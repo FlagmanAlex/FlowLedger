@@ -7,6 +7,8 @@ Firebase Auth — миграция в процессе, см. `../.claude/plans/
 файл `dist/index.js` со всеми зависимостями — на VPS не нужен `node_modules`. Тесты — vitest +
 `mongodb-memory-server` в режиме replica set (транзакции). Если загрузка бинарника `mongod`
 заблокирована (облачная песочница) — указать готовый бинарник через `MONGOMS_SYSTEM_BINARY`.
+В облачной песочнице `fastdl.mongodb.org` закрыт, но открыт `conda.anaconda.org`: пакет
+`conda-forge/linux-64/mongodb-<версия>.conda` (zip → `pkg-*.tar.zst` → `bin/mongod`).
 Настройка VPS и деплой — `../docs/SERVER_SETUP.md`.
 
 Полный архитектурный контекст, принятые решения и стиль — в корневом [`../CLAUDE.md`](../CLAUDE.md)

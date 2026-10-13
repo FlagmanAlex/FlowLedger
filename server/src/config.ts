@@ -10,6 +10,33 @@ const configSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
+  /** Секрет подписи access-токенов (HS256). Длинная случайная строка. */
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET — не короче 32 символов'),
+  /** OAuth client id Google (через запятую), чьи id_token принимаем: Web,
+   *  Android, iOS — у токена aud равен client id того клиента, что его получил. */
+  GOOGLE_CLIENT_IDS: z
+    .string()
+    .min(1, 'GOOGLE_CLIENT_IDS обязателен')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  /** Внешний префикс пути, под которым nginx отдаёт API (`/flowledger` на
+   *  api.wwms.ru, пусто — на своём домене). Нужен для path refresh-cookie:
+   *  браузер видит внешний путь, а не тот, что после прокси. */
+  PUBLIC_BASE_PATH: z
+    .string()
+    .default('')
+    .refine((value) => value === '' || (value.startsWith('/') && !value.endsWith('/')), {
+      message: 'PUBLIC_BASE_PATH — пусто или вида /flowledger (без слеша в конце)',
+    }),
+  /** Secure у refresh-cookie. Выключать только для локальной разработки по http. */
+  COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
 });
 
 export type Config = z.infer<typeof configSchema>;

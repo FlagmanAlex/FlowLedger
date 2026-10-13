@@ -1,4 +1,5 @@
 import { MongoClient, type Db } from 'mongodb';
+import { sessionsCollection, usersCollection } from './collections.js';
 
 export interface Database {
   client: MongoClient;
@@ -17,4 +18,12 @@ export async function connectDatabase(uri: string, dbName: string): Promise<Data
 
 /** Индексы коллекций. createIndexes идемпотентен — безопасно вызывать при
  *  каждом старте. Пополняется по мере переноса сущностей из Firestore. */
-export async function ensureIndexes(_db: Db): Promise<void> {}
+export async function ensureIndexes(db: Db): Promise<void> {
+  await usersCollection(db).createIndex({ googleSub: 1 }, { unique: true });
+  await sessionsCollection(db).createIndexes([
+    { key: { tokenHash: 1 }, unique: true },
+    { key: { userId: 1 } },
+    // TTL: MongoDB сам удаляет сессии после expiresAt.
+    { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+  ]);
+}

@@ -39,8 +39,18 @@
       **Выполнено 2026-10-13**: VPS настроен по `docs/SERVER_SETUP.md`, секрет
       `DEPLOY_SERVER_PATH` заведён, деплой (run #3) успешен, `/flowledger/api/health` →
       `{"status":"ok","db":"ok"}` снаружи и клиент работает как раньше — проверено пользователем.
-- [ ] 3. `[server, shared, client]` Аутентификация: Google id_token → свой JWT + refresh
-      (`sessions`), `/api/me`; Login на Google Identity Services
+- [ ] 3. `[server]` Аутентификация: Google id_token → свой JWT + refresh (`sessions`), `/api/me`.
+      Решение пользователя 2026-10-13: этап 3 — только сервер, проверка через Postman (OAuth 2.0
+      Google в Postman → `id_token`); новый Login на Google Identity Services в `client` — на
+      этапе 5 вместе с переводом данных (раньше нельзя: данные в Firestore читаются только при
+      входе через Firebase). Web OAuth-клиенту добавлен origin `https://api.wwms.ru`.
+      **Код готов 2026-10-13**: `POST /api/auth/google|refresh|logout`, `GET /api/me`, `jose`
+      (проверка id_token по JWKS Google, свой HS256 access-токен 15 мин с `sid`), refresh-токен
+      30 дней — httpOnly-cookie `fl_refresh` (path `${PUBLIC_BASE_PATH}/api/auth`) или в теле для
+      mobile (`transport: 'body'`), в `sessions` только sha256, ротация при refresh, TTL-индекс;
+      `requireAuth` проверяет и что сессия не отозвана. Тесты (10) зелёные на `mongod` 8.3.
+      Осталось: env на VPS (`JWT_SECRET`, `GOOGLE_CLIENT_IDS`, `PUBLIC_BASE_PATH`), деплой,
+      проверка через Postman.
 - [ ] 4. `[server]` API сущностей + перенос логики (балансы/долги в транзакциях Mongo, доступ
       владелец/участник, приглашения), интеграционные тесты
 - [ ] 5. `[shared, client]` `shared` на HTTP-клиент (те же сигнатуры репозиториев и хуков), удалить

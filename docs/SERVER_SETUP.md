@@ -46,7 +46,22 @@ PORT=3100
 MONGO_URI=mongodb://flowledger:<пароль>@api.wwms.ru:27017,api.wwms.ru:27018,api.wwms.ru:27019/flowledger?replicaSet=rs0&authSource=flowledger
 MONGO_DB=flowledger
 LOG_LEVEL=info
+GOOGLE_CLIENT_IDS=493091413384-a49q0ufv83sf3gmmihbg27du1et7nedq.apps.googleusercontent.com,493091413384-fbvosngror8s562emiv8ef562e4p1va1.apps.googleusercontent.com
+PUBLIC_BASE_PATH=/flowledger
 ```
+
+`JWT_SECRET` (подпись access-токенов) — генерируется прямо в файл, на экран и в историю не
+попадает:
+
+```bash
+sudo -u deploy-flowledger -H sh -c 'cd ~ && printf "JWT_SECRET=%s\n" "$(openssl rand -base64 48)" >> flowledger-server.env'
+```
+
+Смена `JWT_SECRET` не разлогинивает: выданные access-токены перестают действовать, клиенты
+получают новые по refresh-токену (сессии хранятся в Mongo, от секрета не зависят).
+`GOOGLE_CLIENT_IDS` — Web- и Android-клиенты OAuth проекта `flowledger2`; у Web-клиента в Google
+Cloud Console в Authorized JavaScript origins должен быть `https://api.wwms.ru` (добавлен
+2026-10-13).
 
 Пароль в URI — URL-кодированный (спецсимволы `@:/?#%` → `%40` и т.п.).
 
