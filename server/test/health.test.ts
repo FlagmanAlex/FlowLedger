@@ -2,6 +2,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { MongoClient } from 'mongodb';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
+import { rejectAllGoogleTokens, testDeps } from './helpers.js';
 
 describe('GET /api/health', () => {
   let replSet: MongoMemoryReplSet;
@@ -20,7 +21,7 @@ describe('GET /api/health', () => {
   });
 
   it('отвечает ok, когда MongoDB доступна', async () => {
-    const app = await buildApp({ db: client.db('test') });
+    const app = await buildApp(testDeps(client.db('test'), rejectAllGoogleTokens));
     const response = await app.inject({ method: 'GET', url: '/api/health' });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: 'ok', db: 'ok' });
@@ -31,7 +32,7 @@ describe('GET /api/health', () => {
     const closedClient = new MongoClient(replSet.getUri(), { serverSelectionTimeoutMS: 500 });
     await closedClient.connect();
     await closedClient.close();
-    const app = await buildApp({ db: closedClient.db('test') });
+    const app = await buildApp(testDeps(closedClient.db('test'), rejectAllGoogleTokens));
     const response = await app.inject({ method: 'GET', url: '/api/health' });
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({ status: 'error', db: 'unavailable' });

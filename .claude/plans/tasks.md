@@ -21,7 +21,7 @@
 - [x] **Деплой клиента сломан: SSH-ключ отвергнут** (run #59–61, 2026-10-04). Починилось в тот же
       день — с run #62 деплой клиента снова успешен. Пользователь деплоя на VPS —
       `deploy-flowledger` (ключ `flowledger-deploy` в его `authorized_keys`, проверено 2026-10-13).
-- [ ] Следующий этап — **3. Аутентификация** (этапы строго по порядку, см. правило в `CLAUDE.md`).
+- [ ] Следующий этап — **4. API сущностей** (этапы строго по порядку, см. правило в `CLAUDE.md`).
 
 - [x] 1. `[server]` Подготовка — выполнено 2026-10-13, все ответы в плане (`mongo-migration.md` →
       «Что нужно от пользователя»): VPS `api.wwms.ru`, Node 22, Mongo 7.0 в Docker (rs0),
@@ -39,8 +39,23 @@
       **Выполнено 2026-10-13**: VPS настроен по `docs/SERVER_SETUP.md`, секрет
       `DEPLOY_SERVER_PATH` заведён, деплой (run #3) успешен, `/flowledger/api/health` →
       `{"status":"ok","db":"ok"}` снаружи и клиент работает как раньше — проверено пользователем.
-- [ ] 3. `[server, shared, client]` Аутентификация: Google id_token → свой JWT + refresh
-      (`sessions`), `/api/me`; Login на Google Identity Services
+- [x] 3. `[server]` Аутентификация: Google id_token → свой JWT + refresh (`sessions`), `/api/me`.
+      Решение пользователя 2026-10-13: этап 3 — только сервер, проверка через Postman (OAuth 2.0
+      Google в Postman → `id_token`); новый Login на Google Identity Services в `client` — на
+      этапе 5 вместе с переводом данных (раньше нельзя: данные в Firestore читаются только при
+      входе через Firebase). Web OAuth-клиенту добавлен origin `https://api.wwms.ru`.
+      **Код готов 2026-10-13**: `POST /api/auth/google|refresh|logout`, `GET /api/me`, `jose`
+      (проверка id_token по JWKS Google, свой HS256 access-токен 15 мин с `sid`), refresh-токен
+      30 дней — httpOnly-cookie `fl_refresh` (path `${PUBLIC_BASE_PATH}/api/auth`) или в теле для
+      mobile (`transport: 'body'`), в `sessions` только sha256, ротация при refresh, TTL-индекс;
+      `requireAuth` проверяет и что сессия не отозвана. Тесты (10) зелёные на `mongod` 8.3.
+      **Выполнено 2026-10-13**: env на VPS дополнен, деплой (run #5) успешен, пользователь проверил
+      через Postman весь цикл на проде: вход → `/me` → refresh (ротация cookie) → logout (204) →
+      `/me` со старым access-токеном → 401 «Сессия завершена». Для Postman у Web OAuth-клиента
+      добавлены redirect URI `https://oauth.pstmn.io/v1/callback` и второй client secret (Google
+      показывает секрет только при создании; первый — используется Firebase Auth, не трогать до
+      cutover). После cutover оба можно убрать. Тестовый пользователь, созданный этим входом, —
+      с `_id` ObjectId (см. «Перенос данных» в плане).
 - [ ] 4. `[server]` API сущностей + перенос логики (балансы/долги в транзакциях Mongo, доступ
       владелец/участник, приглашения), интеграционные тесты
 - [ ] 5. `[shared, client]` `shared` на HTTP-клиент (те же сигнатуры репозиториев и хуков), удалить
