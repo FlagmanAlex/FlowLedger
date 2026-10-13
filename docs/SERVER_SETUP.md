@@ -132,8 +132,14 @@ docker exec -i -e MONGO_URI="$MONGO_URI" mongodb-mongodb-1 \
   sh -c 'mongorestore --uri="$MONGO_URI" --archive --gzip --drop' < /var/backups/flowledger/<файл>.archive.gz
 ```
 
-## До переноса прод-данных (этап 7 миграции)
-- **Закрыть порты Mongo снаружи.** Сейчас 27017–27019 опубликованы Docker'ом на `0.0.0.0`, файрвола
-  нет. Правило — в цепочке `DOCKER-USER` по внешнему интерфейсу (Docker обходит `ufw`); Compass —
-  через SSH-туннель под `flagman` (`directConnection=true`); будущие серверы replica set —
-  allowlist по IP.
+## Порты MongoDB закрыты снаружи
+Docker публикует 27017–27019 на `0.0.0.0`, а `ufw`/INPUT обходит — поэтому правило в цепочке
+`DOCKER-USER` по внешнему интерфейсу `eth0` (IPv6 — INPUT, его Docker отдаёт через docker-proxy):
+`server/deploy/mongo-firewall.sh` → `/usr/local/sbin/`, применяется юнитом
+`server/deploy/flowledger-mongo-firewall.service` после каждого старта Docker. Узлы replica set
+(сеть Docker) и процессы на VPS (сервер, бэкап) правило не задевает. Будущие узлы replica set на
+других серверах — их IP в `ALLOW_IPS` скрипта.
+
+Compass — через SSH-туннель: в подключении вкладка *Proxy/SSH* → *SSH with password/identity*,
+хост `api.wwms.ru`, пользователь `flagman`; строка подключения
+`mongodb://<админ>:<пароль>@127.0.0.1:27017/?directConnection=true&authSource=admin`.

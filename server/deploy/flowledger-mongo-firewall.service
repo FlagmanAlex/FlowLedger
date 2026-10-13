@@ -1,0 +1,15 @@
+# Применяет mongo-firewall.sh после каждого старта Docker (Docker пересоздаёт свои
+# цепочки iptables, DOCKER-USER при этом не трогает, но после перезагрузки VPS
+# правил нет — их ставит этот юнит).
+[Unit]
+Description=FlowLedger: закрыть порты MongoDB снаружи
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mongo-firewall.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
