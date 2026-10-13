@@ -178,9 +178,9 @@ mobile (Expo)               ─┘                                         └�
   `mongodb://flowledger:<пароль>@api.wwms.ru:27017,api.wwms.ru:27018,api.wwms.ru:27019/flowledger?replicaSet=rs0&authSource=flowledger`.
   Пользователь Mongo **`flowledger`** (`readWrite` на базу `flowledger`, authSource `flowledger`)
   создан 2026-10-13, пароль — только у пользователя (пойдёт в `/etc/flowledger/server.env`).
+  ⚠️ Порты 27017–27019 опубликованы на `0.0.0.0` — проверить файрвол (отдельный вопрос).
 - SSH-пользователь деплоя (`DEPLOY_USER`) — **`deploy-flowledger`**, ключ на месте, деплой клиента
   работает (успешные run с #62). Админский вход на VPS у пользователя — `root`.
-  ⚠️ Порты 27017–27019 опубликованы на `0.0.0.0` — проверить файрвол (отдельный вопрос).
 
 Исходный список:
 - Версия MongoDB и Node.js на VPS (или можно ли поставить Node LTS).
