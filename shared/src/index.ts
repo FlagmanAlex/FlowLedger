@@ -1,5 +1,4 @@
-export * from './firebase/firebase.js';
-export * from './firebase/auth.js';
+export * from './api/client.js';
 export * from './repositories/wallets.repo.js';
 export * from './repositories/currencies.repo.js';
 export * from './repositories/holders.repo.js';

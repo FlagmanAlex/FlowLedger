@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { doc, getDoc } from 'firebase/firestore';
 import type { AuthUser, Invite } from '@flowledger/interfaces';
-import { getUser, setActiveOwner } from '../repositories/users.repo.js';
+import { getUser } from '../repositories/users.repo.js';
 import {
   acceptInvite,
   createInvite,
@@ -11,7 +10,6 @@ import {
   revokeInvite,
 } from '../repositories/invites.repo.js';
 import { leaveSharedAccess, listMembers, removeMember } from '../repositories/members.repo.js';
-import { membersCollection } from '../repositories/collections.js';
 
 export function useUserDoc(uid: string | undefined) {
   return useQuery({
@@ -24,10 +22,9 @@ export function useUserDoc(uid: string | undefined) {
 /**
  * Чью базу сейчас использует вошедший пользователь: свою (по умолчанию) или
  * базу другого владельца, к которой получил доступ по приглашению
- * (`users/{uid}.activeOwnerId`). Если запись о членстве у владельца исчезла
- * (доступ отозван), молча возвращает пользователя на его собственную базу —
- * без этого он бы упирался в permission-denied вместо работы со своими
- * данными.
+ * (`activeOwnerId`). Если доступ отозван, сервер сам сбрасывает
+ * activeOwnerId при чтении профиля (/me) — пользователь возвращается на
+ * свою базу, а не упирается в 403.
  */
 export function useOwnerId(user: AuthUser | null): {
   ownerId: string | undefined;
@@ -37,27 +34,12 @@ export function useOwnerId(user: AuthUser | null): {
   const uid = user?.uid;
   const userDocQuery = useUserDoc(uid);
   const activeOwnerId = userDocQuery.data?.activeOwnerId;
-
-  const membershipQuery = useQuery({
-    queryKey: ['membership', activeOwnerId, uid],
-    queryFn: async () => {
-      const snap = await getDoc(doc(membersCollection(activeOwnerId!), uid!));
-      if (!snap.exists()) {
-        await setActiveOwner(uid!, undefined);
-        return false;
-      }
-      return true;
-    },
-    enabled: Boolean(activeOwnerId && uid),
-  });
-
-  const isSharedAccess = Boolean(activeOwnerId) && membershipQuery.data !== false;
-  const ownerId = isSharedAccess ? activeOwnerId : uid;
+  const isSharedAccess = Boolean(activeOwnerId);
 
   return {
-    ownerId,
+    ownerId: isSharedAccess ? activeOwnerId : uid,
     isSharedAccess,
-    isLoading: userDocQuery.isLoading || (Boolean(activeOwnerId) && membershipQuery.isLoading),
+    isLoading: userDocQuery.isLoading,
   };
 }
 
@@ -100,7 +82,6 @@ export function useAcceptInvite() {
       acceptInvite(invite, acceptor),
     onSuccess: (_, { acceptor }) => {
       queryClient.invalidateQueries({ queryKey: ['userDoc', acceptor.uid] });
-      queryClient.invalidateQueries({ queryKey: ['membership'] });
     },
   });
 }
@@ -128,7 +109,6 @@ export function useLeaveSharedAccess() {
       leaveSharedAccess(ownerId, memberUid),
     onSuccess: (_, { memberUid }) => {
       queryClient.invalidateQueries({ queryKey: ['userDoc', memberUid] });
-      queryClient.invalidateQueries({ queryKey: ['membership'] });
     },
   });
 }

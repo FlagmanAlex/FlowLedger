@@ -1,20 +1,17 @@
-import { addDoc, getDocs, query, where } from 'firebase/firestore';
 import type { Counterparty } from '@flowledger/interfaces';
-import { counterpartiesCollection } from './collections.js';
+import { apiRequest } from '../api/client.js';
 
 export async function listCounterparties(userId: string): Promise<Counterparty[]> {
-  const snap = await getDocs(query(counterpartiesCollection(), where('userId', '==', userId)));
-  return snap.docs.map((d) => d.data());
+  return apiRequest<Counterparty[]>('/counterparties', { query: { ownerId: userId } });
 }
 
 export async function createCounterparty(
   userId: string,
   input: Omit<Counterparty, 'id' | 'userId' | 'createdAt'>,
 ): Promise<string> {
-  const ref = await addDoc(counterpartiesCollection(), {
-    ...input,
-    userId,
-    createdAt: new Date().toISOString(),
-  } as Counterparty);
-  return ref.id;
+  const { id } = await apiRequest<{ id: string }>('/counterparties', {
+    method: 'POST',
+    body: { ...input, ownerId: userId },
+  });
+  return id;
 }

@@ -1,7 +1,6 @@
-import { addDoc, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import type { Debt } from '@flowledger/interfaces';
-import { debtsCollection } from './collections.js';
-import { createTransaction, deleteTransaction, listTransactions, updateTransaction } from './transactions.repo.js';
+import { apiRequest } from '../api/client.js';
+import { listTransactions } from './transactions.repo.js';
 
 /** Открывающая операция долга (debt_lend/debt_borrow) — единственная
  *  связанная транзакция, у которой type не debt_repayment. Нужна, чтобы
@@ -12,11 +11,9 @@ export async function getDebtOpeningTransaction(userId: string, debtId: string) 
   return linked.find((t) => t.type !== 'debt_repayment');
 }
 
+/** Долги базы, новые сверху. */
 export async function listDebts(userId: string): Promise<Debt[]> {
-  const snap = await getDocs(query(debtsCollection(), where('userId', '==', userId)));
-  return snap.docs
-    .map((d) => d.data())
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return apiRequest<Debt[]>('/debts', { query: { ownerId: userId } });
 }
 
 export interface CreateDebtInput {
@@ -30,43 +27,21 @@ export interface CreateDebtInput {
 }
 
 /**
- * Заводит долг и сразу создаёт открывающую операцию в общем журнале
- * (debt_lend/debt_borrow) — она же двигает баланс кошелька. remainingAmount
- * стартует с 0 и доводится до principal той же дельтой, которую
- * createTransaction применяет к любой debt_* операции (см.
- * transactions.repo.ts) — единая логика для создания долга и его
- * последующих правок/погашений, а не отдельная ветка здесь.
+ * Заводит долг вместе с открывающей операцией в общем журнале
+ * (debt_lend/debt_borrow) — сервер делает это одной транзакцией Mongo:
+ * операция двигает баланс кошелька и доводит remainingAmount до principal.
+ * createdBy сервер берёт из сессии.
  */
 export async function createDebt(
   userId: string,
   input: CreateDebtInput,
-  createdBy: string,
+  _createdBy: string,
 ): Promise<string> {
-  const ref = await addDoc(debtsCollection(), {
-    userId,
-    walletId: input.walletId,
-    direction: input.direction,
-    counterpartyId: input.counterpartyId,
-    principal: input.principal,
-    remainingAmount: 0,
-    dueDate: input.dueDate,
-    status: 'active',
-    createdBy,
-    createdAt: new Date().toISOString(),
-  } as Debt);
-
-  await createTransaction(userId, {
-    walletId: input.walletId,
-    debtId: ref.id,
-    debtDirection: input.direction,
-    type: input.direction === 'lent' ? 'debt_lend' : 'debt_borrow',
-    amount: input.principal,
-    description: input.description,
-    date: input.date,
-    createdBy,
+  const { id } = await apiRequest<{ id: string }>('/debts', {
+    method: 'POST',
+    body: { ...input, ownerId: userId },
   });
-
-  return ref.id;
+  return id;
 }
 
 /** Правит карточку долга — контрагент (ссылка на Counterparty), срок.
@@ -80,7 +55,7 @@ export async function updateDebt(
   id: string,
   patch: Partial<Pick<Debt, 'counterpartyId' | 'dueDate'>>,
 ): Promise<void> {
-  await updateDoc(doc(debtsCollection(), id), patch);
+  await apiRequest(`/debts/${id}`, { method: 'PATCH', body: patch });
 }
 
 export interface UpdateDebtOpeningInput {
@@ -91,16 +66,10 @@ export interface UpdateDebtOpeningInput {
 }
 
 /**
- * Правит открывающую операцию долга (сумму/кошелёк/дату/описание) —
- * через updateTransaction, ту же атомарную runTransaction, что и у любой
- * другой операции: она уже сама пересчитывает и баланс кошелька(ов), и
- * Debt.remainingAmount по дельте между старой и новой суммой (см.
- * transactions.repo.ts). Debt.principal/walletId отдельным вызовом
- * синхронизируются с новыми значениями — remainingAmount транзакция
- * поправила сама, а principal (процент прогресса) и walletId (кошелёк
- * долга — источник для будущих погашений и отображения карточки в
- * Debts.tsx) на ней не завязаны и раньше расходились с открывающей
- * операцией после правки, пока их не завели сюда явно.
+ * Правит открывающую операцию долга (сумму/кошелёк/дату/описание) и
+ * синхронно Debt.principal/walletId — сервер делает это одной транзакцией
+ * вместе с пересчётом баланса кошелька(ов) и remainingAmount. Сумма меньше
+ * уже погашенной части отклоняется (и здесь, и на сервере).
  */
 export async function updateDebtOpening(
   debt: Debt,
@@ -111,20 +80,10 @@ export async function updateDebtOpening(
   if (input.principal < repaidSoFar) {
     throw new Error(`Сумма не может быть меньше уже погашенной части (${repaidSoFar})`);
   }
-
-  await updateTransaction(openingTransactionId, {
-    walletId: input.walletId,
-    amount: input.principal,
-    date: input.date,
-    description: input.description,
+  await apiRequest(`/debts/${debt.id}/opening`, {
+    method: 'PUT',
+    body: { ...input, openingTransactionId },
   });
-
-  const debtPatch: Partial<Pick<Debt, 'principal' | 'walletId'>> = {};
-  if (input.principal !== debt.principal) debtPatch.principal = input.principal;
-  if (input.walletId !== debt.walletId) debtPatch.walletId = input.walletId;
-  if (Object.keys(debtPatch).length > 0) {
-    await updateDoc(doc(debtsCollection(), debt.id), debtPatch);
-  }
 }
 
 export interface RepayDebtInput {
@@ -133,34 +92,23 @@ export interface RepayDebtInput {
   description?: string;
 }
 
-/** Погашение (частичное или полное) — обычная операция журнала (type
- *  debt_repayment) с debtId; знак движения по кошельку решает
- *  debt.direction, снимок которого кладётся на транзакцию. */
+/** Погашение (частичное или полное) — операция журнала debt_repayment по
+ *  кошельку долга; знак движения по кошельку — из debt.direction. */
 export async function repayDebt(
-  userId: string,
+  _userId: string,
   debt: Debt,
   input: RepayDebtInput,
-  createdBy: string,
+  _createdBy: string,
 ): Promise<string> {
-  return createTransaction(userId, {
-    walletId: debt.walletId,
-    debtId: debt.id,
-    debtDirection: debt.direction,
-    type: 'debt_repayment',
-    amount: input.amount,
-    description: input.description,
-    date: input.date,
-    createdBy,
+  const { id } = await apiRequest<{ id: string }>(`/debts/${debt.id}/repay`, {
+    method: 'POST',
+    body: input,
   });
+  return id;
 }
 
-/** Удаляет долг вместе со всеми связанными операциями (открытие +
- *  погашения) из общего журнала — каждая через deleteTransaction, чтобы
- *  баланс кошелька откатился так же, как при обычном удалении операции. */
-export async function deleteDebt(userId: string, id: string): Promise<void> {
-  const linked = await listTransactions(userId, { debtId: id, limit: 1000 });
-  for (const t of linked) {
-    await deleteTransaction(t.id);
-  }
-  await deleteDoc(doc(debtsCollection(), id));
+/** Удаляет долг вместе со всеми его операциями (открытие + погашения) —
+ *  балансы кошельков откатываются; на сервере одной транзакцией. */
+export async function deleteDebt(_userId: string, id: string): Promise<void> {
+  await apiRequest(`/debts/${id}`, { method: 'DELETE' });
 }

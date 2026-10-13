@@ -1,35 +1,27 @@
-import { addDoc, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import type { Category } from '@flowledger/interfaces';
-import { categoriesCollection } from './collections.js';
+import { apiRequest } from '../api/client.js';
 
-/** Категории без явного sortOrder (заведённые до появления ручной сортировки)
- *  сортируются по времени создания — тот же порядок, что был раньше. */
-function effectiveOrder(c: Category): number {
-  return c.sortOrder ?? new Date(c.createdAt).getTime();
-}
-
+/** Категории базы — уже отсортированы сервером (sortOrder, а без него —
+ *  по времени создания). */
 export async function listCategories(userId: string): Promise<Category[]> {
-  const snap = await getDocs(query(categoriesCollection(), where('userId', '==', userId)));
-  return snap.docs.map((d) => d.data()).sort((a, b) => effectiveOrder(a) - effectiveOrder(b));
+  return apiRequest<Category[]>('/categories', { query: { ownerId: userId } });
 }
 
 export async function createCategory(
   userId: string,
   input: Omit<Category, 'id' | 'userId' | 'createdAt' | 'sortOrder'>,
 ): Promise<string> {
-  const ref = await addDoc(categoriesCollection(), {
-    ...input,
-    userId,
-    sortOrder: Date.now(),
-    createdAt: new Date().toISOString(),
-  } as Category);
-  return ref.id;
+  const { id } = await apiRequest<{ id: string }>('/categories', {
+    method: 'POST',
+    body: { ...input, ownerId: userId },
+  });
+  return id;
 }
 
 export async function updateCategory(id: string, patch: Partial<Category>): Promise<void> {
-  await updateDoc(doc(categoriesCollection(), id), patch);
+  await apiRequest(`/categories/${id}`, { method: 'PATCH', body: patch });
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  await deleteDoc(doc(categoriesCollection(), id));
+  await apiRequest(`/categories/${id}`, { method: 'DELETE' });
 }

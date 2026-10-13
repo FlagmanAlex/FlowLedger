@@ -1,20 +1,17 @@
-import { deleteDoc, doc, getDocs } from 'firebase/firestore';
 import type { Member } from '@flowledger/interfaces';
-import { membersCollection } from './collections.js';
-import { setActiveOwner } from './users.repo.js';
+import { apiRequest } from '../api/client.js';
 
 export async function listMembers(ownerId: string): Promise<Member[]> {
-  const snap = await getDocs(membersCollection(ownerId));
-  return snap.docs.map((d) => d.data());
+  return apiRequest<Member[]>('/members', { query: { ownerId } });
 }
 
 /** Владелец отзывает доступ участника к своей базе. */
 export async function removeMember(ownerId: string, memberUid: string): Promise<void> {
-  await deleteDoc(doc(membersCollection(ownerId), memberUid));
+  await apiRequest(`/members/${ownerId}/${memberUid}`, { method: 'DELETE' });
 }
 
-/** Участник сам покидает общий доступ и возвращается к своей базе. */
+/** Участник сам покидает общий доступ — сервер заодно возвращает его на
+ *  свою базу. */
 export async function leaveSharedAccess(ownerId: string, memberUid: string): Promise<void> {
-  await deleteDoc(doc(membersCollection(ownerId), memberUid));
-  await setActiveOwner(memberUid, undefined);
+  await apiRequest(`/members/${ownerId}/${memberUid}`, { method: 'DELETE' });
 }
