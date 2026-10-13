@@ -176,6 +176,8 @@ mobile (Expo)               ─┘                                         └�
   имя, не внутренние имена Docker → с хоста драйвер их находит). Авторизация в Mongo включена
   (админ — в базе `admin`). Строка подключения сервера:
   `mongodb://flowledger:<пароль>@api.wwms.ru:27017,api.wwms.ru:27018,api.wwms.ru:27019/flowledger?replicaSet=rs0&authSource=flowledger`.
+  Пользователь Mongo **`flowledger`** (`readWrite` на базу `flowledger`, authSource `flowledger`)
+  создан 2026-10-13, пароль — только у пользователя (пойдёт в `/etc/flowledger/server.env`).
   ⚠️ Порты 27017–27019 опубликованы на `0.0.0.0` — проверить файрвол (отдельный вопрос).
 
 Исходный список:
