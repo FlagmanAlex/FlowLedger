@@ -14,8 +14,12 @@
 оба должны находиться в стандартном `PATH` (`/usr/local/bin` или `/usr/bin`):
 
 ```bash
-sudo -u deploy-flowledger sh -c 'command -v node pm2; node -v'
+sudo -u deploy-flowledger -H sh -c 'cd ~ && command -v node && command -v pm2 && pm2 ping'
 ```
+
+`cd ~` обязателен: `sudo -u` оставляет текущим каталогом `/root`, куда у `deploy-flowledger` нет
+доступа, и pm2 падает на запуске демона с `spawn node EACCES`. В `sh` (dash) `command -v` с
+несколькими именами проверяет только первое — поэтому по одному.
 
 Если `pm2` не найден — `npm install -g pm2` от root (ставится рядом с `node`).
 
@@ -31,14 +35,17 @@ docker exec -it mongodb-mongodb-1 mongosh -u <админ> -p --authenticationDat
 вне этого каталога, чтобы деплой его не стёр:
 
 ```bash
-sudo -u deploy-flowledger mkdir -p /home/deploy-flowledger/flowledger-server
-sudo -u deploy-flowledger sh -c 'umask 077; cat > /home/deploy-flowledger/flowledger-server.env' <<'EOF'
+sudo -u deploy-flowledger -H sh -c 'cd ~ && mkdir -p flowledger-server && umask 077 && nano flowledger-server.env'
+```
+
+Содержимое (через редактор — чтобы пароль не попал в историю команд):
+
+```
 HOST=127.0.0.1
 PORT=3100
 MONGO_URI=mongodb://flowledger:<пароль>@api.wwms.ru:27017,api.wwms.ru:27018,api.wwms.ru:27019/flowledger?replicaSet=rs0&authSource=flowledger
 MONGO_DB=flowledger
 LOG_LEVEL=info
-EOF
 ```
 
 Пароль в URI — URL-кодированный (спецсимволы `@:/?#%` → `%40` и т.п.).
@@ -54,13 +61,14 @@ pm2 startup systemd -u deploy-flowledger --hp /home/deploy-flowledger
 (`pm2 save`). Посмотреть процесс и логи:
 
 ```bash
-sudo -u deploy-flowledger pm2 list
-sudo -u deploy-flowledger pm2 logs flowledger-server --lines 50
+sudo -u deploy-flowledger -H sh -c 'cd ~ && pm2 list'
+sudo -u deploy-flowledger -H sh -c 'cd ~ && pm2 logs flowledger-server --lines 50 --nostream'
 ```
 
 ## 5. nginx
 В `/etc/nginx/sites-available/default`, в блок `server` с `listen 443 ssl`, сразу после
-`location /flowledger/ { ... }` — содержимое `server/deploy/nginx-flowledger-api.conf`. Затем:
+`location /flowledger/ { ... }` — содержимое `server/deploy/nginx-flowledger-api.conf` (сделано
+2026-10-13, бэкап исходного файла — `/root/nginx-default.bak-2026-10-13`). Затем:
 
 ```bash
 nginx -t && systemctl reload nginx
