@@ -172,6 +172,10 @@ mobile (Expo)               ─┘                                         └�
   `mongodb-mongodb-1` (порт хоста 27017), `mongodb-mongodb2-1` (27018), `mongodb-mongodb3-1`
   (27019); плюс веб-GUI `mongodb-php-gui` на `127.0.0.1:5000`. `mongod` на хосте нет — команды
   `mongosh` выполнять через `docker exec`.
+  Replica set **`rs0`**, участники в конфиге — `api.wwms.ru:27017`, `:27018`, `:27019` (внешнее
+  имя, не внутренние имена Docker → с хоста драйвер их находит). Авторизация в Mongo включена
+  (админ — в базе `admin`). Строка подключения сервера:
+  `mongodb://flowledger:<пароль>@api.wwms.ru:27017,api.wwms.ru:27018,api.wwms.ru:27019/flowledger?replicaSet=rs0&authSource=flowledger`.
   ⚠️ Порты 27017–27019 опубликованы на `0.0.0.0` — проверить файрвол (отдельный вопрос).
 
 Исходный список:
