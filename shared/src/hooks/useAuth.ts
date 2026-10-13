@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AuthUser } from '@flowledger/interfaces';
-import { subscribeToAuthUser } from '../firebase/auth.js';
+import { subscribeToAuthUser } from '../api/client.js';
 
 export interface UseAuthResult {
   user: AuthUser | null;

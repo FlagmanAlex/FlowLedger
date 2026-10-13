@@ -21,7 +21,7 @@ describe('аутентификация', () => {
     db = client.db('auth-test');
     await ensureIndexes(db);
     google = await createFakeGoogle();
-    app = await buildApp(testDeps(db, google.verifier));
+    app = await buildApp(testDeps(client, 'auth-test', google.verifier));
   });
 
   afterAll(async () => {

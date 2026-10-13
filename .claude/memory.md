@@ -125,10 +125,11 @@ FlowLedger — учёт доходов/расходов, продаётся ка
   (`AcceptInvite.tsx`, внутри `AuthLayout`, но вне `MainLayout`) — `AuthLayout`/`Login` сохраняют
   исходный путь через `location.state.from`, чтобы не залогиненный переход по ссылке не терял её.
 
-- **Запланирован уход с Firebase (2026-10-04)** — Firestore и Firebase Auth заменяются своим
-  сервером (`server/`, Node + MongoDB на том же VPS, Google-вход через свой OAuth/JWT). Сервер
-  уже задеплоен (этапы 2–3: `/api/health`, вход), но клиент, данные и вход приложения пока на Firebase — всё описанное
-  выше про Firestore/правила актуально до cutover.
+- **Уход с Firebase выполнен (cutover 2026-10-13)** — Firestore и Firebase Auth заменены своим
+  сервером (`server/`, Node + MongoDB на том же VPS, Google-вход через свой OAuth/JWT). С 2026-10-13
+  данные в MongoDB на VPS, клиент ходит в API сервера (`shared/src/api/client.ts`), вход — Google
+  Identity Services → свой JWT. Описанное выше про Firestore/правила/Firebase Auth — история до
+  cutover; Firestore оставлен как точка отката на ~2–4 недели, затем уборка (этап 8 плана).
   План: `.claude/plans/mongo-migration.md`.
   **Вход на сервере (этап 3, 2026-10-13)**: `POST /api/auth/google { idToken, transport? }` —
   `jose` проверяет Google id_token по JWKS Google (`aud` ∈ `GOOGLE_CLIENT_IDS`, `email_verified`),

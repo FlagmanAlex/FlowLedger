@@ -1,12 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_CONTROL_PLANE_FIREBASE_API_KEY: string;
-  readonly VITE_CONTROL_PLANE_FIREBASE_AUTH_DOMAIN: string;
-  readonly VITE_CONTROL_PLANE_FIREBASE_PROJECT_ID: string;
-  readonly VITE_CONTROL_PLANE_FIREBASE_STORAGE_BUCKET: string;
-  readonly VITE_CONTROL_PLANE_FIREBASE_MESSAGING_SENDER_ID: string;
-  readonly VITE_CONTROL_PLANE_FIREBASE_APP_ID: string;
+  /** Необязательно: свой Web OAuth client id (по умолчанию — flowledger2). */
+  readonly VITE_GOOGLE_CLIENT_ID?: string;
 }
 
 interface ImportMeta {

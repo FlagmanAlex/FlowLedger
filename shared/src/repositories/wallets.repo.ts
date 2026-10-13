@@ -1,41 +1,32 @@
-import { addDoc, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import type { Wallet } from '@flowledger/interfaces';
-import { walletsCollection } from './collections.js';
+import { apiRequest } from '../api/client.js';
 
-/** Кошельки без явного sortOrder (заведённые до появления ручной сортировки)
- *  сортируются по времени создания — тот же порядок, что был раньше. */
-function effectiveOrder(w: Wallet): number {
-  return w.sortOrder ?? new Date(w.createdAt).getTime();
-}
-
+/** Кошельки базы — уже отсортированы сервером (sortOrder, а без него — по
+ *  времени создания). */
 export async function listWallets(userId: string): Promise<Wallet[]> {
-  const snap = await getDocs(query(walletsCollection(), where('userId', '==', userId)));
-  return snap.docs.map((d) => d.data()).sort((a, b) => effectiveOrder(a) - effectiveOrder(b));
+  return apiRequest<Wallet[]>('/wallets', { query: { ownerId: userId } });
 }
 
+/** Новый кошелёк — с нулевым балансом; баланс дальше меняют только операции. */
 export async function createWallet(
   userId: string,
   input: Omit<Wallet, 'id' | 'userId' | 'balance' | 'archived' | 'createdAt' | 'sortOrder'>,
 ): Promise<string> {
-  const ref = await addDoc(walletsCollection(), {
-    ...input,
-    userId,
-    balance: 0,
-    archived: false,
-    sortOrder: Date.now(),
-    createdAt: new Date().toISOString(),
-  } as Wallet);
-  return ref.id;
+  const { id } = await apiRequest<{ id: string }>('/wallets', {
+    method: 'POST',
+    body: { ...input, ownerId: userId },
+  });
+  return id;
 }
 
 export async function updateWallet(id: string, patch: Partial<Wallet>): Promise<void> {
-  await updateDoc(doc(walletsCollection(), id), patch);
+  await apiRequest(`/wallets/${id}`, { method: 'PATCH', body: patch });
 }
 
 export async function archiveWallet(id: string): Promise<void> {
-  await updateDoc(doc(walletsCollection(), id), { archived: true });
+  await updateWallet(id, { archived: true });
 }
 
 export async function deleteWallet(id: string): Promise<void> {
-  await deleteDoc(doc(walletsCollection(), id));
+  await apiRequest(`/wallets/${id}`, { method: 'DELETE' });
 }

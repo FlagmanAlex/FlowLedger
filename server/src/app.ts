@@ -1,14 +1,21 @@
 import cookie from '@fastify/cookie';
 import Fastify, { type FastifyServerOptions } from 'fastify';
-import type { Db } from 'mongodb';
+import type { Db, MongoClient } from 'mongodb';
 import type { GoogleTokenVerifier } from './auth/google.js';
 import { createRequireAuth } from './auth/require-auth.js';
 import { accessTokenKey } from './auth/tokens.js';
+import { registerErrorHandler } from './http.js';
 import { authRoutes } from './routes/auth.js';
+import { debtRoutes } from './routes/debts.js';
+import { entityRoutes } from './routes/entities.js';
 import { healthRoutes } from './routes/health.js';
 import { meRoutes } from './routes/me.js';
+import { sharingRoutes } from './routes/sharing.js';
+import { transactionRoutes } from './routes/transactions.js';
 
 export interface AppDeps {
+  /** Клиент нужен для транзакций Mongo (сессии), db — для всего остального. */
+  client: MongoClient;
   db: Db;
   auth: {
     jwtSecret: string;
@@ -24,6 +31,7 @@ export interface AppDeps {
 export async function buildApp(deps: AppDeps, options: FastifyServerOptions = {}) {
   const app = Fastify(options);
   await app.register(cookie);
+  registerErrorHandler(app);
 
   const accessKey = accessTokenKey(deps.auth.jwtSecret);
   const requireAuth = createRequireAuth(deps.db, accessKey);
@@ -40,6 +48,11 @@ export async function buildApp(deps: AppDeps, options: FastifyServerOptions = {}
         cookieSecure: deps.auth.cookieSecure,
       });
       await api.register(meRoutes, { db: deps.db, requireAuth });
+      const data = { db: deps.db, client: deps.client, requireAuth };
+      await api.register(entityRoutes, data);
+      await api.register(transactionRoutes, data);
+      await api.register(debtRoutes, data);
+      await api.register(sharingRoutes, data);
     },
     { prefix: '/api' },
   );

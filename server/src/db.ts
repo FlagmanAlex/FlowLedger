@@ -1,5 +1,17 @@
 import { MongoClient, type Db } from 'mongodb';
-import { sessionsCollection, usersCollection } from './collections.js';
+import {
+  categoriesCollection,
+  counterpartiesCollection,
+  currenciesCollection,
+  debtsCollection,
+  holdersCollection,
+  invitesCollection,
+  membersCollection,
+  sessionsCollection,
+  transactionsCollection,
+  usersCollection,
+  walletsCollection,
+} from './collections.js';
 
 export interface Database {
   client: MongoClient;
@@ -26,4 +38,26 @@ export async function ensureIndexes(db: Db): Promise<void> {
     // TTL: MongoDB сам удаляет сессии после expiresAt.
     { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
   ]);
+  // Все сущности базы выбираются по userId (id владельца базы).
+  for (const collection of [
+    walletsCollection(db),
+    categoriesCollection(db),
+    currenciesCollection(db),
+    holdersCollection(db),
+    counterpartiesCollection(db),
+    debtsCollection(db),
+  ]) {
+    await collection.createIndex({ userId: 1 });
+  }
+  await transactionsCollection(db).createIndexes([
+    { key: { userId: 1, date: -1, createdAt: -1 } },
+    { key: { userId: 1, walletId: 1, date: -1 } },
+    { key: { userId: 1, transferToWalletId: 1, date: -1 } },
+    { key: { userId: 1, debtId: 1 } },
+  ]);
+  await membersCollection(db).createIndexes([
+    { key: { ownerId: 1, userId: 1 }, unique: true },
+    { key: { userId: 1 } },
+  ]);
+  await invitesCollection(db).createIndex({ ownerId: 1, status: 1 });
 }

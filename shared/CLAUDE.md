@@ -1,8 +1,8 @@
 # shared — общая бизнес-логика (client + mobile)
 
-Firebase-инициализация (`src/firebase/firebase.ts` — единый Firebase App instance,
-`src/firebase/auth.ts`), repositories поверх Firestore (`src/repositories/`, все коллекции
-top-level с фильтрацией по `userId`), React Query хуки (`src/hooks/`, принимают `userId` вместо
+HTTP-клиент API (`src/api/client.ts` — `configureApi`, access-токен в памяти, авто-refresh по 401,
+вход/выход, `subscribeToAuthUser`), repositories поверх API сервера (`src/repositories/`, данные
+базы — по `userId` = id владельца базы, доступ проверяет сервер), React Query хуки (`src/hooks/`, принимают `userId` вместо
 `enabled: boolean`), Zod-схемы (`src/validation/`). Публичный API пакета — только то, что
 реэкспортировано из `src/index.ts`.
 

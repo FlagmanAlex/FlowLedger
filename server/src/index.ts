@@ -10,6 +10,7 @@ async function main() {
   const database = await connectDatabase(config.MONGO_URI, config.MONGO_DB);
   const app = await buildApp(
     {
+      client: database.client,
       db: database.db,
       auth: {
         jwtSecret: config.JWT_SECRET,

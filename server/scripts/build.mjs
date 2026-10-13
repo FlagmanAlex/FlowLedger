@@ -4,8 +4,10 @@ import { build } from 'esbuild';
 // Сборка сервера в один файл dist/index.js со всеми зависимостями внутри —
 // на VPS не нужен ни node_modules, ни npm install: rsync одного файла и рестарт.
 await build({
-  entryPoints: ['src/index.ts'],
-  outfile: 'dist/index.js',
+  // index.js — сервер; import-firestore.js — разовая загрузка выгрузки
+  // Firestore в Mongo (src/migrate/import.ts), запускается на VPS вручную.
+  entryPoints: { index: 'src/index.ts', 'import-firestore': 'src/migrate/import.ts' },
+  outdir: 'dist',
   bundle: true,
   platform: 'node',
   target: 'node20',

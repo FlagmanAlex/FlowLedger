@@ -126,7 +126,11 @@ mobile (Expo)               ─┘                                         └�
 участник, отозванный участник), приглашения. Заменяют задачу «unit-тесты Security Rules».
 
 ## Перенос данных
-Скрипт `server/scripts/migrate-from-firestore.ts` (firebase-admin, запуск разово):
+Реализовано 2026-10-13 двумя частями: `server/scripts/firestore-export.mjs` (firebase-admin, в
+GitHub Actions от сервис-аккаунта `FIREBASE_SERVICE_ACCOUNT` — нужны роли Cloud Datastore Viewer и
+Firebase Authentication Viewer) → JSON → `server/src/migrate/import.ts` (бандл
+`dist/import-firestore.js`, на VPS с `~/flowledger-server.env`). Workflow
+`.github/workflows/migrate-firestore.yml` (`mode: dry-run | apply`). Изначальный план:
 1. Firebase Auth `listUsers` → `uid → googleSub/email/displayName/photoURL`.
 2. Все коллекции Firestore + подколлекции `users/*/members` → Mongo с сохранением id.
 3. Проверки: количество документов по коллекциям совпадает; пересчёт балансов кошельков и
@@ -148,6 +152,14 @@ mobile (Expo)               ─┘                                         └�
 4. Деплой клиента на API.
 5. Firestore не трогаем ~2–4 недели как откат (записи после переключения при откате потеряются —
    приемлемо), затем удаляем Firebase-артефакты и отключаем проект.
+
+## Решение пользователя 2026-10-13: этапы 4–7 одним заходом
+После этапа 3 пользователь решил не проверять каждый маршрут отдельно: API сущностей (4), `shared`
+на HTTP + новый Login (5) и перенос данных (6) делаются одним заходом, затем cutover (7), а
+проверка — уже в самом приложении. Откат — деплой клиента из `main` (Firestore не трогаем).
+Порядок cutover: деплой сервера → роли сервис-аккаунту → `migrate-firestore.yml` dry-run →
+apply → сразу деплой клиента ветки. Между apply и деплоем клиента записи в Firestore теряются —
+делать подряд. Бэкапы Mongo и закрытие портов — сразу после запуска (до этого откат — Firestore).
 
 ## Этапы
 1. **Подготовка (пользователь)** — данные о VPS и Mongo (см. «Что нужно от пользователя»).
