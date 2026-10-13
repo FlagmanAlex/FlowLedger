@@ -2,14 +2,14 @@ import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { connectDatabase } from './db.js';
 
-/** Точка входа: конфиг → MongoDB → HTTP. На VPS запускается systemd-юнитом
- *  flowledger-server (см. deploy/). */
+/** Точка входа: конфиг → MongoDB → HTTP. На VPS запускается pm2 пользователя
+ *  деплоя (deploy/ecosystem.config.cjs). */
 async function main() {
   const config = loadConfig();
   const database = await connectDatabase(config.MONGO_URI, config.MONGO_DB);
   const app = await buildApp({ db: database.db }, { logger: { level: config.LOG_LEVEL } });
 
-  // Корректная остановка по SIGTERM (systemctl stop/restart) — дожидаемся
+  // Корректная остановка по SIGINT (pm2 stop/reload) или SIGTERM — дожидаемся
   // текущих запросов, затем закрываем соединение с MongoDB.
   const shutdown = async (signal: string) => {
     app.log.info(`Получен ${signal}, останавливаемся`);

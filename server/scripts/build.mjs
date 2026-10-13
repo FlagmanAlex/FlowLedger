@@ -1,3 +1,4 @@
+import { copyFile, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 
 // Сборка сервера в один файл dist/index.js со всеми зависимостями внутри —
@@ -29,3 +30,8 @@ await build({
   },
   logLevel: 'info',
 });
+
+// Бандл — ESM: без package.json с "type": "module" рядом Node на VPS прочитал бы
+// index.js как CommonJS. Конфиг pm2 едет в том же каталоге.
+await writeFile('dist/package.json', '{ "type": "module" }\n');
+await copyFile('deploy/ecosystem.config.cjs', 'dist/ecosystem.config.cjs');

@@ -1,95 +1,97 @@
 # Настройка VPS для API-сервера FlowLedger
 
 Разовая настройка сервера под `server/` (Node + MongoDB). Клиент уже деплоится на этот же VPS
-(`deploy.yml`), здесь — только то, что нужно добавить для API. Контекст миграции —
-`.claude/plans/mongo-migration.md`.
+(`deploy.yml`), здесь — только то, что нужно добавить для API. Контекст миграции и собранные
+данные о VPS — `.claude/plans/mongo-migration.md`.
 
-Итог: `https://<домен>/flowledger/api/*` → nginx → `127.0.0.1:3100/api/*` → systemd-сервис
-`flowledger-server` → MongoDB (replica set) на том же сервере.
+Итог: `https://api.wwms.ru/flowledger/api/*` → nginx → `127.0.0.1:3100/api/*` → процесс
+`flowledger-server` в pm2 пользователя `deploy-flowledger` → MongoDB (replica set `rs0` в Docker).
 
-## 1. Node.js
-Нужен Node.js **20+** (рекомендуется 22 LTS) по пути `/usr/bin/node`. Проверка: `node -v`.
+Все команды ниже — от root: вход по SSH под `flagman`, затем `su -`.
 
-## 2. MongoDB: база и пользователь
-Replica set уже настроен. Создать отдельного пользователя только с правами на базу `flowledger`
-(в `mongosh` под администратором):
+## 1. Node.js и pm2 для пользователя деплоя
+Деплой заходит по SSH под `deploy-flowledger` и вызывает `node`/`pm2` без полного пути, поэтому
+оба должны находиться в стандартном `PATH` (`/usr/local/bin` или `/usr/bin`):
 
-```js
-use flowledger
-db.createUser({
-  user: 'flowledger',
-  pwd: passwordPrompt(),
-  roles: [{ role: 'readWrite', db: 'flowledger' }],
-})
-```
-
-Узнать имя replica set: `rs.status().set`.
-
-## 3. Системный пользователь и каталоги
 ```bash
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin flowledger
-sudo mkdir -p /opt/flowledger-server /etc/flowledger
-# каталог с бандлом — на запись пользователю деплоя (DEPLOY_USER), на чтение сервису
-sudo chown <DEPLOY_USER>:flowledger /opt/flowledger-server
-sudo chmod 750 /opt/flowledger-server
+sudo -u deploy-flowledger -H sh -c 'cd ~ && command -v node && command -v pm2 && pm2 ping'
 ```
 
-## 4. Конфиг (секреты)
-`/etc/flowledger/server.env` — права `640`, владелец `root:flowledger`:
+`cd ~` обязателен: `sudo -u` оставляет текущим каталогом `/root`, куда у `deploy-flowledger` нет
+доступа, и pm2 падает на запуске демона с `spawn node EACCES`. В `sh` (dash) `command -v` с
+несколькими именами проверяет только первое — поэтому по одному.
+
+Если `pm2` не найден — `npm install -g pm2` от root (ставится рядом с `node`).
+
+## 2. MongoDB: пользователь
+Уже создан (`flowledger`, `readWrite` на базу `flowledger`). Для справки:
+
+```bash
+docker exec -it mongodb-mongodb-1 mongosh -u <админ> -p --authenticationDatabase admin --quiet --eval 'db.getSiblingDB("flowledger").createUser({ user: "flowledger", pwd: passwordPrompt(), roles: [{ role: "readWrite", db: "flowledger" }] })'
+```
+
+## 3. Каталог и конфиг (секреты)
+Бандл кладётся в `/home/deploy-flowledger/flowledger-server/` (rsync `--delete`), конфиг — рядом,
+вне этого каталога, чтобы деплой его не стёр:
+
+```bash
+sudo -u deploy-flowledger -H sh -c 'cd ~ && mkdir -p flowledger-server && umask 077 && nano flowledger-server.env'
+```
+
+Содержимое (через редактор — чтобы пароль не попал в историю команд):
 
 ```
 HOST=127.0.0.1
 PORT=3100
-MONGO_URI=mongodb://flowledger:<пароль>@127.0.0.1:27017/flowledger?replicaSet=<имя rs>&authSource=flowledger
+MONGO_URI=mongodb://flowledger:<пароль>@api.wwms.ru:27017,api.wwms.ru:27018,api.wwms.ru:27019/flowledger?replicaSet=rs0&authSource=flowledger
 MONGO_DB=flowledger
 LOG_LEVEL=info
 ```
 
-Пароль в URI — URL-кодированный (спецсимволы `@:/?#` → `%40` и т.п.).
+Пароль в URI — URL-кодированный (спецсимволы `@:/?#%` → `%40` и т.п.).
 
-## 5. systemd-юнит
+## 4. Автозапуск pm2 после перезагрузки VPS
+Отдельный pm2 пользователя `deploy-flowledger` (pm2 у `root` и `flagman` не затрагивается):
+
 ```bash
-sudo cp server/deploy/flowledger-server.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable flowledger-server   # запустится после первого деплоя бандла
+pm2 startup systemd -u deploy-flowledger --hp /home/deploy-flowledger
 ```
 
-Логи: `journalctl -u flowledger-server -f`.
+Команда создаёт systemd-сервис `pm2-deploy-flowledger`. Список процессов сохраняет сам деплой
+(`pm2 save`). Посмотреть процесс и логи:
 
-## 6. Права деплоя на рестарт
-Workflow перезапускает сервис по SSH от `DEPLOY_USER`. Разрешить ровно эти команды без пароля
-(`sudo visudo -f /etc/sudoers.d/flowledger-deploy`):
-
-```
-<DEPLOY_USER> ALL=(root) NOPASSWD: /usr/bin/systemctl restart flowledger-server, /usr/bin/journalctl -u flowledger-server -n 50 --no-pager
+```bash
+sudo -u deploy-flowledger -H sh -c 'cd ~ && pm2 list'
+sudo -u deploy-flowledger -H sh -c 'cd ~ && pm2 logs flowledger-server --lines 50 --nostream'
 ```
 
-## 7. nginx
-Добавить содержимое `server/deploy/nginx-flowledger-api.conf` в `server { ... }` того домена, где
-отдаётся клиент, затем `sudo nginx -t && sudo systemctl reload nginx`.
+## 5. nginx
+В `/etc/nginx/sites-available/default`, в блок `server` с `listen 443 ssl`, сразу после
+`location /flowledger/ { ... }` — содержимое `server/deploy/nginx-flowledger-api.conf` (сделано
+2026-10-13, бэкап исходного файла — `/root/nginx-default.bak-2026-10-13`). Затем:
 
-Если вместо nginx — Caddy:
-```
-handle_path /flowledger/api/* {
-    rewrite * /api{path}
-    reverse_proxy 127.0.0.1:3100
-}
+```bash
+nginx -t && systemctl reload nginx
 ```
 
-## 8. GitHub Secrets
-Уже есть (от деплоя клиента): `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`. Добавить:
-- `DEPLOY_SERVER_PATH` = `/opt/flowledger-server`
+## 6. GitHub Secrets
+Уже есть (от деплоя клиента): `DEPLOY_HOST`, `DEPLOY_USER` (= `deploy-flowledger`),
+`DEPLOY_SSH_KEY`. Добавить:
+- `DEPLOY_SERVER_PATH` = `/home/deploy-flowledger/flowledger-server`
 
-## 9. Первый деплой и проверка
+## 7. Первый деплой и проверка
 Actions → «Deploy server to VPS» → Run workflow (на нужной ветке). Workflow сам прогоняет
-typecheck и тесты, собирает бандл, кладёт его в `/opt/flowledger-server`, перезапускает сервис и
-проверяет `GET /api/health`. Снаружи:
+typecheck и тесты, собирает бандл, кладёт его на VPS, запускает/перезапускает процесс в pm2
+(`pm2 startOrReload ecosystem.config.cjs`) и проверяет `GET /api/health`. Снаружи:
 
 ```bash
-curl https://<домен>/flowledger/api/health
+curl https://api.wwms.ru/flowledger/api/health
 # {"status":"ok","db":"ok"}
 ```
 
-## Бэкапы (обязательно до переноса прод-данных)
-`mongodump` по cron с копией за пределы VPS — настраивается отдельно, до cutover (этап 7 плана
-миграции).
+## До переноса прод-данных (этап 7 миграции)
+- **Закрыть порты Mongo снаружи.** Сейчас 27017–27019 опубликованы Docker'ом на `0.0.0.0`, файрвола
+  нет. Правило — в цепочке `DOCKER-USER` по внешнему интерфейсу (Docker обходит `ufw`); Compass —
+  через SSH-туннель под `flagman` (`directConnection=true`); будущие серверы replica set —
+  allowlist по IP.
+- **Бэкапы**: `mongodump` по cron с копией за пределы VPS.
