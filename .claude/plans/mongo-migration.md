@@ -182,7 +182,9 @@ mobile (Expo)               ─┘                                         └�
 - SSH-пользователь деплоя (`DEPLOY_USER`) — **`deploy-flowledger`**, ключ на месте, деплой клиента
   работает (успешные run с #62). Админский вход на VPS у пользователя — `root`.
 - Веб-сервер — **nginx на хосте** (не в Docker), слушает 80/443. Сайт `api.wwms.ru` — в
-  `/etc/nginx/sites-available/default`.
+  `/etc/nginx/sites-available/default`. Клиент там — `location /flowledger/ { root /var/www;
+  try_files $uri $uri/ /flowledger/index.html; }` (строки 50–53, последний location перед `}`
+  блока server). API — новый `location /flowledger/api/` рядом (префикс длиннее → выигрывает).
 
 Исходный список:
 - Версия MongoDB и Node.js на VPS (или можно ли поставить Node LTS).
