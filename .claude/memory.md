@@ -127,9 +127,20 @@ FlowLedger — учёт доходов/расходов, продаётся ка
 
 - **Запланирован уход с Firebase (2026-10-04)** — Firestore и Firebase Auth заменяются своим
   сервером (`server/`, Node + MongoDB на том же VPS, Google-вход через свой OAuth/JWT). Сервер
-  уже задеплоен (этап 2, только `/api/health`), но данные и вход пока на Firebase — всё описанное
+  уже задеплоен (этапы 2–3: `/api/health`, вход), но клиент, данные и вход приложения пока на Firebase — всё описанное
   выше про Firestore/правила актуально до cutover.
   План: `.claude/plans/mongo-migration.md`.
+  **Вход на сервере (этап 3, 2026-10-13)**: `POST /api/auth/google { idToken, transport? }` —
+  `jose` проверяет Google id_token по JWKS Google (`aud` ∈ `GOOGLE_CLIENT_IDS`, `email_verified`),
+  пользователь ищется/создаётся по `googleSub` (новым — `_id` hex ObjectId; при переносе данных —
+  Firebase uid). Сессия = документ `sessions` (sha256 refresh-токена, TTL-индекс по `expiresAt`).
+  Access-токен — свой HS256 JWT на 15 минут (`sub` = userId, `sid` = id сессии), заголовок
+  `Authorization: Bearer`; `requireAuth` проверяет и подпись, и что сессия жива (logout действует
+  сразу). Refresh-токен 30 дней: web — httpOnly Secure SameSite=Strict cookie `fl_refresh` с path
+  `${PUBLIC_BASE_PATH}/api/auth`, mobile (`transport: 'body'`) — в теле; ротация при каждом
+  `POST /api/auth/refresh`. `POST /api/auth/logout` → 204, `GET /api/me` → `User`. Ошибки API —
+  `{ error: { code, message } }`. Тесты подменяют Google своим RSA-ключом и локальным JWKS
+  (`server/test/helpers.ts`) — проверка идёт тем же кодом, что на проде.
 
 ## Правила стиля
 - **Все комментарии в коде — только на русском языке** (JSDoc и инлайн-комментарии). Действует и
