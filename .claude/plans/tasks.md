@@ -28,12 +28,15 @@
       «Что нужно от пользователя»): VPS `api.wwms.ru`, Node 22, Mongo 7.0 в Docker (rs0),
       пользователь Mongo `flowledger` создан, рестарт через pm2 под `deploy-flowledger`, nginx на
       хосте, Mongo открыта наружу — закрыть до cutover (Compass через SSH-туннель).
-- [ ] 2. `[server]` Каркас `server/` (Fastify + mongodb + zod), `/api/health`, systemd, nginx
+- [ ] 2. `[server]` Каркас `server/` (Fastify + mongodb + zod), `/api/health`, pm2, nginx
       `/flowledger/api/`, `deploy-server.yml`. **Код готов 2026-10-04**: workspace `server/`
       (конфиг через zod, подключение к Mongo, `GET /api/health` с ping базы, graceful shutdown по
-      SIGTERM, сборка esbuild в один файл `dist/index.js`), тесты vitest + `mongodb-memory-server`
-      (replica set) зелёные, бандл проверен на живом `mongod` 8.3 в replica set. Юнит, конфиг
-      nginx, workflow `deploy-server.yml` и инструкция `docs/SERVER_SETUP.md` написаны.
+      SIGINT/SIGTERM, сборка esbuild в один файл `dist/index.js`), тесты vitest + `mongodb-memory-server`
+      (replica set) зелёные, бандл проверен на живом `mongod` 8.3 в replica set. 2026-10-13 по
+      решению пользователя systemd заменён на pm2 пользователя `deploy-flowledger`
+      (`server/deploy/ecosystem.config.cjs` едет в `dist/` вместе с бандлом и
+      `dist/package.json` `type: module`; запуск бандла под pm2 5.3.0 проверен локально),
+      `deploy-server.yml` и `docs/SERVER_SETUP.md` обновлены под реальные данные VPS.
       Осталось: разовая настройка VPS по `docs/SERVER_SETUP.md` (пользователь), секрет
       `DEPLOY_SERVER_PATH`, первый `workflow_dispatch` и проверка health снаружи.
 - [ ] 3. `[server, shared, client]` Аутентификация: Google id_token → свой JWT + refresh

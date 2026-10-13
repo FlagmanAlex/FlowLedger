@@ -27,7 +27,7 @@
 
 ```
 client (web, /flowledger/)  ─┐
-                             ├─ HTTPS ─ nginx ─ /flowledger/api/* ─ server (Node, systemd) ─ MongoDB (localhost, rs)
+                             ├─ HTTPS ─ nginx ─ /flowledger/api/* ─ server (Node, pm2)   ─ MongoDB (localhost, rs)
 mobile (Expo)               ─┘                                         └─ Google (проверка id_token), proverkacheka (позже)
 ```
 
@@ -112,8 +112,8 @@ mobile (Expo)               ─┘                                         └�
 ### Деплой
 - Новый workflow `.github/workflows/deploy-server.yml` (+ `workflow_dispatch`, по образцу
   `deploy.yml`): сборка `server` на раннере → rsync в отдельный путь на VPS → `npm ci --omit=dev`
-  → `systemctl restart flowledger-server`. Триггер — `server/**`, `interfaces/**`.
-- systemd-юнит + nginx `location /flowledger/api/` — разово на сервере (пользователь или сессия с
+  → `pm2 startOrReload` (pm2 пользователя деплоя, без sudo). Триггер — `server/**`, `interfaces/**`.
+- env-файл, `pm2 startup` + nginx `location /flowledger/api/` — разово на сервере (пользователь или сессия с
   доступом к серверу).
 - Бэкапы Mongo: `mongodump` по cron + копия за пределы VPS — обязательно до переключения прода.
 - После миграции удаляются `firestore.rules`, `firestore.indexes.json`, `firebase.json`,
@@ -148,7 +148,7 @@ mobile (Expo)               ─┘                                         └�
 
 ## Этапы
 1. **Подготовка (пользователь)** — данные о VPS и Mongo (см. «Что нужно от пользователя»).
-2. **Каркас `server/`** — workspace, Fastify, подключение к Mongo, `/api/health`, systemd, nginx,
+2. **Каркас `server/`** — workspace, Fastify, подключение к Mongo, `/api/health`, pm2, nginx,
    `deploy-server.yml`. Деплой и проверка health на проде.
 3. **Аутентификация** — Google id_token → JWT/refresh, `sessions`, `/api/me`.
 4. **API сущностей** — от простых к сложным: currencies, holders, categories, counterparties,
@@ -192,8 +192,7 @@ mobile (Expo)               ─┘                                         └�
 - Перезапуск сервера — **pm2** (решение пользователя 2026-10-13, вместо systemd): отдельный pm2
   под `deploy-flowledger` (деплой рестартует без sudo, сервер не от root). На VPS уже есть pm2
   v5.3.0 у `root` (с PM2 Agent) и у `flagman` — их не трогаем. Автозапуск — `pm2 startup` +
-  `pm2 save` для `deploy-flowledger`. systemd-юнит и sudoers из `docs/SERVER_SETUP.md` заменить
-  на pm2 на этапе 2.
+  `pm2 save` для `deploy-flowledger`. Деплой и `docs/SERVER_SETUP.md` переведены на pm2 на этапе 2.
 - Веб-сервер — **nginx на хосте** (не в Docker), слушает 80/443. Сайт `api.wwms.ru` — в
   `/etc/nginx/sites-available/default`. Клиент там — `location /flowledger/ { root /var/www;
   try_files $uri $uri/ /flowledger/index.html; }` (строки 50–53, последний location перед `}`
