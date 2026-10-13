@@ -181,6 +181,11 @@ mobile (Expo)               ─┘                                         └�
   ⚠️ Порты 27017–27019 опубликованы на `0.0.0.0` — проверить файрвол (отдельный вопрос).
 - SSH-пользователь деплоя (`DEPLOY_USER`) — **`deploy-flowledger`**, ключ на месте, деплой клиента
   работает (успешные run с #62). Админский вход на VPS у пользователя — `root`.
+- Перезапуск сервера — **pm2** (решение пользователя 2026-10-13, вместо systemd): отдельный pm2
+  под `deploy-flowledger` (деплой рестартует без sudo, сервер не от root). На VPS уже есть pm2
+  v5.3.0 у `root` (с PM2 Agent) и у `flagman` — их не трогаем. Автозапуск — `pm2 startup` +
+  `pm2 save` для `deploy-flowledger`. Систему юнита/sudoers из `docs/SERVER_SETUP.md` заменить
+  на pm2 на этапе 2.
 - Веб-сервер — **nginx на хосте** (не в Docker), слушает 80/443. Сайт `api.wwms.ru` — в
   `/etc/nginx/sites-available/default`. Клиент там — `location /flowledger/ { root /var/www;
   try_files $uri $uri/ /flowledger/index.html; }` (строки 50–53, последний location перед `}`
