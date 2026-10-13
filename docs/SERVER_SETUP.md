@@ -104,9 +104,31 @@ curl https://api.wwms.ru/flowledger/api/health
 # {"status":"ok","db":"ok"}
 ```
 
+## Бэкапы (Google Drive)
+Скрипт `server/deploy/flowledger-backup.sh`: ежедневно `mongodump` базы `flowledger` из контейнера
+`mongodb-mongodb-1` (сжатый архив, учётка `flowledger` из `~deploy-flowledger/flowledger-server.env`)
+→ `/var/backups/flowledger` (7 дней) → `rclone` в Google Drive, папка `FlowLedger-backups` (30 дней).
+
+1. rclone: `curl https://rclone.org/install.sh | bash`.
+2. Подключение Google Drive (от root): `rclone config` → `n` (new remote), имя `gdrive`, тип
+   `drive`, client_id/secret пусто, scope `1` (full access), остальное по умолчанию;
+   «Use web browser to automatically authenticate?» → `n` (на VPS браузера нет) — rclone покажет
+   команду `rclone authorize "drive" "..."`: выполнить её на своём компьютере (с установленным
+   rclone), войти в Google, полученный токен вставить обратно на VPS.
+3. Скрипт: содержимое `server/deploy/flowledger-backup.sh` → `/usr/local/bin/flowledger-backup.sh`,
+   `chmod 700`. Проверка вручную: `/usr/local/bin/flowledger-backup.sh`.
+4. Cron (от root, `crontab -e`): `17 3 * * * /usr/local/bin/flowledger-backup.sh >> /var/log/flowledger-backup.log 2>&1`
+
+Восстановление (заменяет текущие коллекции содержимым архива):
+
+```bash
+MONGO_URI=$(grep '^MONGO_URI=' /home/deploy-flowledger/flowledger-server.env | cut -d= -f2-)
+docker exec -i -e MONGO_URI="$MONGO_URI" mongodb-mongodb-1 \
+  sh -c 'mongorestore --uri="$MONGO_URI" --archive --gzip --drop' < /var/backups/flowledger/<файл>.archive.gz
+```
+
 ## До переноса прод-данных (этап 7 миграции)
 - **Закрыть порты Mongo снаружи.** Сейчас 27017–27019 опубликованы Docker'ом на `0.0.0.0`, файрвола
   нет. Правило — в цепочке `DOCKER-USER` по внешнему интерфейсу (Docker обходит `ufw`); Compass —
   через SSH-туннель под `flagman` (`directConnection=true`); будущие серверы replica set —
   allowlist по IP.
-- **Бэкапы**: `mongodump` по cron с копией за пределы VPS.
