@@ -163,6 +163,44 @@ mobile (Expo)               ─┘                                         └�
    сразу коллекция Mongo.
 
 ## Что нужно от пользователя перед этапом 2
+**Этап 1 закрыт 2026-10-13** — все данные собраны (по одному вопросу):
+- Сервер — **VPS** (не виртуальный хостинг), на нём MongoDB и клиент; `server/` кладём туда же.
+- Прод-домен: **`api.wwms.ru`**, приложение — `https://api.wwms.ru/flowledger/` (в корне — другое
+  приложение). Свой домен для FlowLedger — позже, на том же IP.
+- Node.js на VPS — **v22.22.3** (подходит, ставить не нужно).
+- MongoDB — **в Docker**, образ `mongo:7.0.28`, replica set из 3 контейнеров на одном VPS:
+  `mongodb-mongodb-1` (порт хоста 27017), `mongodb-mongodb2-1` (27018), `mongodb-mongodb3-1`
+  (27019); плюс веб-GUI `mongodb-php-gui` на `127.0.0.1:5000`. `mongod` на хосте нет — команды
+  `mongosh` выполнять через `docker exec`.
+  Replica set **`rs0`**, участники в конфиге — `api.wwms.ru:27017`, `:27018`, `:27019` (внешнее
+  имя, не внутренние имена Docker → с хоста драйвер их находит). Авторизация в Mongo включена
+  (админ — в базе `admin`). Строка подключения сервера:
+  `mongodb://flowledger:<пароль>@api.wwms.ru:27017,api.wwms.ru:27018,api.wwms.ru:27019/flowledger?replicaSet=rs0&authSource=flowledger`.
+  Пользователь Mongo **`flowledger`** (`readWrite` на базу `flowledger`, authSource `flowledger`)
+  создан 2026-10-13, пароль — только у пользователя (пойдёт в `/etc/flowledger/server.env`).
+  ⚠️ Порты 27017–27019 опубликованы на `0.0.0.0`, **файрвола нет** (`ufw` inactive, `DOCKER-USER`
+  пуст, проверено 2026-10-13) — Mongo доступна из интернета, защищена только паролем. Закрыть
+  до переноса прод-данных (правило в `DOCKER-USER` по внешнему интерфейсу).
+  Решение пользователя 2026-10-13: снаружи 27017–27019 закрыть; **Compass — через SSH-туннель**
+  (встроенный в Compass, SSH-пользователь `flagman`, `directConnection=true`); IP домашний
+  динамический — allowlist по IP не подходит. Когда replica set разнесётся на другие серверы
+  (запланировано в другом проекте) — добавить их IP в allowlist того же правила.
+- SSH: вход под `root` запрещён, пользователь входит как `flagman` и делает `su -`. Все команды
+  настройки VPS в инструкциях — от root после `su -`.
+- SSH-пользователь деплоя (`DEPLOY_USER`) — **`deploy-flowledger`**, ключ на месте, деплой клиента
+  работает (успешные run с #62). Админский вход на VPS у пользователя — `root`.
+- Перезапуск сервера — **pm2** (решение пользователя 2026-10-13, вместо systemd): отдельный pm2
+  под `deploy-flowledger` (деплой рестартует без sudo, сервер не от root). На VPS уже есть pm2
+  v5.3.0 у `root` (с PM2 Agent) и у `flagman` — их не трогаем. Автозапуск — `pm2 startup` +
+  `pm2 save` для `deploy-flowledger`. systemd-юнит и sudoers из `docs/SERVER_SETUP.md` заменить
+  на pm2 на этапе 2.
+- Веб-сервер — **nginx на хосте** (не в Docker), слушает 80/443. Сайт `api.wwms.ru` — в
+  `/etc/nginx/sites-available/default`. Клиент там — `location /flowledger/ { root /var/www;
+  try_files $uri $uri/ /flowledger/index.html; }` (строки 50–53, последний location перед `}`
+  блока **HTTPS-server** (`listen 443 ssl`, сертификат Let's Encrypt
+  `/etc/letsencrypt/live/api.wwms.ru/`; строки 17–54; в блоке на 80 — строки 2–14). API — новый `location /flowledger/api/` рядом (префикс длиннее → выигрывает).
+
+Исходный список:
 - Версия MongoDB и Node.js на VPS (или можно ли поставить Node LTS).
 - Создать в Mongo пользователя/базу для FlowLedger (или дать на это добро — тогда опишу команды).
 - Права SSH-пользователя деплоя (`DEPLOY_USER`) на `systemctl restart` нужного юнита (sudoers без
