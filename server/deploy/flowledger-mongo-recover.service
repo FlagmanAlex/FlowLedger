@@ -1,0 +1,15 @@
+# После загрузки VPS проверяет, что replica set rs0 выбрал PRIMARY, и, если нет,
+# перезапускает контейнеры Mongo и сервер FlowLedger (см. mongo-recover.sh).
+[Unit]
+Description=FlowLedger: восстановить replica set MongoDB после загрузки
+Wants=network-online.target
+After=network-online.target docker.service flowledger-mongo-firewall.service pm2-deploy-flowledger.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mongo-recover.sh
+TimeoutStartSec=15min
+
+[Install]
+WantedBy=multi-user.target
