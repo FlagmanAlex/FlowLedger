@@ -6,7 +6,7 @@
 # поднялись раньше, чем сеть/DNS, проверка не проходит, узлы остаются в
 # состоянии «не участник» (Our replica set config is invalid or we are not a
 # member of it) и сами её не повторяют — PRIMARY нет, сервер FlowLedger
-# падает по кругу, nginx отдаёт 502 (так было 2026-10-15). Лечится
+# падает по кругу, warehouse висит без базы, nginx отдаёт 502 (так было 2026-10-15). Лечится
 # перезапуском контейнеров, когда сеть уже готова — это и делает скрипт.
 #
 # Ставится на VPS в /usr/local/sbin/, запускается юнитом
@@ -19,8 +19,10 @@ PORTS=(27017 27018 27019)
 CONTAINERS=(mongodb-mongodb-1 mongodb-mongodb2-1 mongodb-mongodb3-1)
 # Контейнер, из которого запускается mongosh для проверки.
 PROBE=mongodb-mongodb-1
-APP_USER=deploy-flowledger
-APP_NAME=flowledger-server
+# Приложения на этой Mongo, которые перезапускаются после восстановления, —
+# «пользователь pm2:имя процесса». warehouse — соседний проект в pm2 root: если
+# при старте он не подключился к базе, сам он не переподключится и не упадёт.
+APPS=(deploy-flowledger:flowledger-server root:warehouse)
 
 log() { echo "mongo-recover: $*"; }
 
@@ -67,11 +69,15 @@ if ! wait_primary 120; then
   exit 1
 fi
 
-# 4. Перезапуск сервера — чтобы не ждать очередного автоперезапуска pm2.
-# Не критично: pm2 и сам перезапускает упавший сервер.
-log "PRIMARY появился, перезапуск $APP_NAME"
-if runuser -u "$APP_USER" -- sh -c "cd ~ && pm2 restart $APP_NAME" >/dev/null; then
-  log "готово"
-else
-  log "pm2 restart не удался — сервер поднимется при следующем автоперезапуске pm2" >&2
-fi
+# 4. Перезапуск приложений — чтобы не ждать автоперезапуска pm2 и не оставить
+# висеть те, что не смогли подключиться при старте. Ошибка одного не мешает
+# остальным.
+for app in "${APPS[@]}"; do
+  user=${app%%:*} name=${app#*:}
+  if runuser -u "$user" -- sh -c "cd ~ && pm2 restart $name" >/dev/null; then
+    log "перезапущен $name (pm2 $user)"
+  else
+    log "pm2 restart $name (pm2 $user) не удался — проверьте вручную" >&2
+  fi
+done
+log "готово"

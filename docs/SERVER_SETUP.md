@@ -154,7 +154,10 @@ config is invalid or we are not a member of it`) и сами её не повт�
 
 Это делает `server/deploy/mongo-recover.sh` (юнит `server/deploy/flowledger-mongo-recover.service`)
 после загрузки: ждёт DNS, даёт replica set 90 секунд собраться самому, иначе перезапускает три
-контейнера Mongo, ждёт PRIMARY и перезапускает `flowledger-server` в pm2. Установка (от root):
+контейнера Mongo, ждёт PRIMARY и перезапускает приложения на этой Mongo (`APPS` в скрипте):
+`flowledger-server` в pm2 `deploy-flowledger` и соседний `warehouse` в pm2 root — тот после
+неудачного подключения при старте не падает и сам не переподключается (2026-10-15 висел без базы,
+пока его не перезапустили руками). Установка (от root):
 
 ```bash
 install -m 700 mongo-recover.sh /usr/local/sbin/mongo-recover.sh
@@ -164,4 +167,4 @@ systemctl enable flowledger-mongo-recover.service
 /usr/local/sbin/mongo-recover.sh   # проверка вручную: «PRIMARY есть, вмешательство не нужно»
 ```
 
-Установлен и включён 2026-10-15, ручная проверка прошла. Лог после загрузки: `journalctl -u flowledger-mongo-recover -b`.
+Установлен и включён 2026-10-15, ручная проверка прошла. После правки скрипта — повторить `install` скрипта (и юнита + `daemon-reload`). Лог после загрузки: `journalctl -u flowledger-mongo-recover -b`.
