@@ -164,4 +164,4 @@ systemctl enable flowledger-mongo-recover.service
 /usr/local/sbin/mongo-recover.sh   # проверка вручную: «PRIMARY есть, вмешательство не нужно»
 ```
 
-Лог после загрузки: `journalctl -u flowledger-mongo-recover -b`.
+Установлен и включён 2026-10-15, ручная проверка прошла. Лог после загрузки: `journalctl -u flowledger-mongo-recover -b`.
