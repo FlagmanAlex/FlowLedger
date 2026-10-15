@@ -59,6 +59,7 @@ export function Transactions() {
   const [addType, setAddType] = useState<TransactionType>('expense');
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => currentMonthKey());
 
   /** Разные кошельки/категории — разная история, при смене фильтра сбрасываем
@@ -81,6 +82,10 @@ export function Transactions() {
   const holderById = new Map((holders ?? []).map((h) => [h.id, h]));
   const debtById = new Map((debts ?? []).map((d) => [d.id, d]));
   const counterpartyById = new Map((counterparties ?? []).map((c) => [c.id, c]));
+  const activeWallets = (wallets ?? []).filter((w) => !w.archived);
+  /** Перевод из журнала кошелька: отправитель по умолчанию — этот кошелёк. */
+  const canTransfer =
+    Boolean(walletId) && activeWallets.length >= 2 && activeWallets.some((w) => w.id === walletId);
   const walletNameCounts = new Map<string, number>();
   for (const w of wallets ?? []) {
     walletNameCounts.set(w.name, (walletNameCounts.get(w.name) ?? 0) + 1);
@@ -126,7 +131,14 @@ export function Transactions() {
 
   return (
     <div className="page">
-      <h1 className="page__title">Журнал</h1>
+      <div className="page__header">
+        <h1 className="page__title">Журнал</h1>
+        {canTransfer && (
+          <button type="button" className="neo-button neo-button--sm" onClick={() => setShowTransfer(true)}>
+            Перевод
+          </button>
+        )}
+      </div>
 
       <select
         className="neo-input transactions-month-select"
@@ -293,7 +305,7 @@ export function Transactions() {
         <AddTransactionModal
           user={user}
           ownerId={ownerId}
-          wallets={(wallets ?? []).filter((w) => !w.archived)}
+          wallets={activeWallets}
           categories={categories ?? []}
           defaultType={addType}
           defaultWalletId={walletId}
@@ -310,6 +322,16 @@ export function Transactions() {
           defaultType={editingTx.type === 'expense' ? 'expense' : 'income'}
           transaction={editingTx}
           onClose={() => setEditingTx(null)}
+        />
+      )}
+
+      {showTransfer && (
+        <TransferModal
+          user={user}
+          ownerId={ownerId}
+          wallets={activeWallets}
+          defaultFromWalletId={walletId}
+          onClose={() => setShowTransfer(false)}
         />
       )}
 

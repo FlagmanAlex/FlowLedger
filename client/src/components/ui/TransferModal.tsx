@@ -17,6 +17,8 @@ interface TransferModalProps {
   ownerId: string | undefined;
   wallets: Wallet[];
   transaction?: Transaction;
+  /** Кошелёк-отправитель для нового перевода (открыт из журнала кошелька). */
+  defaultFromWalletId?: string;
   onClose: () => void;
 }
 
@@ -28,18 +30,26 @@ function toNumber(value: string): number {
   return Number(value.replace(',', '.'));
 }
 
-export function TransferModal({ user, ownerId, wallets, transaction, onClose }: TransferModalProps) {
+export function TransferModal({
+  user,
+  ownerId,
+  wallets,
+  transaction,
+  defaultFromWalletId,
+  onClose,
+}: TransferModalProps) {
   const createTransaction = useCreateTransaction(ownerId);
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
   const { data: holders } = useHolders(ownerId);
   const isEditing = Boolean(transaction);
 
-  const [fromWalletId, setFromWalletId] = useState<string | undefined>(
-    transaction?.walletId ?? wallets[0]?.id,
-  );
+  const initialFromId =
+    transaction?.walletId ??
+    (wallets.some((w) => w.id === defaultFromWalletId) ? defaultFromWalletId : wallets[0]?.id);
+  const [fromWalletId, setFromWalletId] = useState<string | undefined>(initialFromId);
   const [toWalletId, setToWalletId] = useState<string | undefined>(
-    transaction?.transferToWalletId ?? wallets.find((w) => w.id !== wallets[0]?.id)?.id,
+    transaction?.transferToWalletId ?? wallets.find((w) => w.id !== initialFromId)?.id,
   );
   const [amount, setAmount] = useState(transaction ? String(roundMoney(transaction.amount)) : '');
   const [exchangeRateInput, setExchangeRateInput] = useState(String(transaction?.exchangeRate ?? 1));
