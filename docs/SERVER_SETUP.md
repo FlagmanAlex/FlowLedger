@@ -143,3 +143,25 @@ Docker публикует 27017–27019 на `0.0.0.0`, а `ufw`/INPUT обхо�
 Compass — через SSH-туннель: в подключении вкладка *Proxy/SSH* → *SSH with password/identity*,
 хост `api.wwms.ru`, пользователь `flagman`; строка подключения
 `mongodb://<админ>:<пароль>@127.0.0.1:27017/?directConnection=true&authSource=admin`.
+
+## Автовосстановление replica set после перезагрузки
+Узлы `rs0` записаны в конфиге как `api.wwms.ru:27017–27019`, и при старте каждый `mongod` ищет
+себя в конфиге, подключаясь по этим адресам. Если после перезагрузки VPS контейнеры поднялись
+раньше сети/DNS, проверка не проходит, узлы остаются в состоянии «не участник» (`Our replica set
+config is invalid or we are not a member of it`) и сами её не повторяют: PRIMARY нет, сервер
+падает по кругу, nginx отдаёт 502 (так было 2026-10-15). Лечится `docker restart` контейнеров,
+когда сеть уже готова.
+
+Это делает `server/deploy/mongo-recover.sh` (юнит `server/deploy/flowledger-mongo-recover.service`)
+после загрузки: ждёт DNS, даёт replica set 90 секунд собраться самому, иначе перезапускает три
+контейнера Mongo, ждёт PRIMARY и перезапускает `flowledger-server` в pm2. Установка (от root):
+
+```bash
+install -m 700 mongo-recover.sh /usr/local/sbin/mongo-recover.sh
+install -m 644 flowledger-mongo-recover.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable flowledger-mongo-recover.service
+/usr/local/sbin/mongo-recover.sh   # проверка вручную: «PRIMARY есть, вмешательство не нужно»
+```
+
+Лог после загрузки: `journalctl -u flowledger-mongo-recover -b`.
