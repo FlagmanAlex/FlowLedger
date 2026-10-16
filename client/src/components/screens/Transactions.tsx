@@ -304,6 +304,19 @@ export function Transactions() {
           type="button"
           role="menuitem"
           className="fab-menu__item"
+          tabIndex={fabOpen ? 0 : -1}
+          onClick={() => {
+            setFabOpen(false);
+            openAdd('expense');
+          }}
+        >
+          <span className="fab-menu__icon">±</span>
+          Доход / расход
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className="fab-menu__item"
           disabled={!canTransfer}
           tabIndex={fabOpen ? 0 : -1}
           title={canTransfer ? undefined : 'Для перевода нужно минимум два кошелька'}
@@ -314,19 +327,6 @@ export function Transactions() {
         >
           <span className="fab-menu__icon">⇄</span>
           Перевод
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          className="fab-menu__item"
-          tabIndex={fabOpen ? 0 : -1}
-          onClick={() => {
-            setFabOpen(false);
-            openAdd('expense');
-          }}
-        >
-          <span className="fab-menu__icon">±</span>
-          Доход / расход
         </button>
       </div>
       <button
