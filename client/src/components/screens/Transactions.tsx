@@ -336,7 +336,7 @@ export function Transactions() {
         aria-label={fabOpen ? 'Закрыть меню' : 'Добавить операцию'}
         aria-expanded={fabOpen}
       >
-        +
+        <span className="fab__icon">+</span>
       </button>
 
       {showAdd && (

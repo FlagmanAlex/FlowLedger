@@ -106,10 +106,16 @@
   cursor: pointer;
   box-shadow: var(--neo-raised-lg), var(--neo-glow-accent);
   z-index: 51;
+}
+
+/* Поворачиваем только знак «+», а не саму кнопку — иначе вместе с ней
+   крутится и размытая тень. */
+.fab__icon {
+  display: block;
   transition: transform 0.25s ease;
 }
 
-.fab--open {
+.fab--open .fab__icon {
   transform: rotate(135deg);
 }
 
