@@ -299,36 +299,36 @@ export function Transactions() {
           общем журнале и в журнале кошелька — во втором случае кошелёк
           подставляется по умолчанию в обе формы. */}
       {fabOpen && <div className="fab-menu-overlay" onClick={() => setFabOpen(false)} />}
-      {fabOpen && (
-        <div className="fab-menu" role="menu">
-          <button
-            type="button"
-            role="menuitem"
-            className="fab-menu__item"
-            disabled={!canTransfer}
-            title={canTransfer ? undefined : 'Для перевода нужно минимум два кошелька'}
-            onClick={() => {
-              setFabOpen(false);
-              setShowTransfer(true);
-            }}
-          >
-            <span className="fab-menu__icon">⇄</span>
-            Перевод
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="fab-menu__item"
-            onClick={() => {
-              setFabOpen(false);
-              openAdd('expense');
-            }}
-          >
-            <span className="fab-menu__icon">±</span>
-            Доход / расход
-          </button>
-        </div>
-      )}
+      <div className={`fab-menu${fabOpen ? ' fab-menu--open' : ''}`} role="menu" aria-hidden={!fabOpen}>
+        <button
+          type="button"
+          role="menuitem"
+          className="fab-menu__item"
+          disabled={!canTransfer}
+          tabIndex={fabOpen ? 0 : -1}
+          title={canTransfer ? undefined : 'Для перевода нужно минимум два кошелька'}
+          onClick={() => {
+            setFabOpen(false);
+            setShowTransfer(true);
+          }}
+        >
+          <span className="fab-menu__icon">⇄</span>
+          Перевод
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className="fab-menu__item"
+          tabIndex={fabOpen ? 0 : -1}
+          onClick={() => {
+            setFabOpen(false);
+            openAdd('expense');
+          }}
+        >
+          <span className="fab-menu__icon">±</span>
+          Доход / расход
+        </button>
+      </div>
       <button
         type="button"
         className={`fab${fabOpen ? ' fab--open' : ''}`}
