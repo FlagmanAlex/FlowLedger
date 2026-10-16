@@ -105,6 +105,113 @@
   justify-content: center;
   cursor: pointer;
   box-shadow: var(--neo-raised-lg), var(--neo-glow-accent);
+  z-index: 51;
+}
+
+/* Поворачиваем только знак «+», а не саму кнопку — иначе вместе с ней
+   крутится и размытая тень. */
+.fab__icon {
+  display: block;
+  transition: transform 0.25s ease;
+}
+
+.fab--open .fab__icon {
+  transform: rotate(135deg);
+}
+
+/* Меню плюсика: пункты выезжают из-под кнопки по очереди. Фон не
+   затемняем — на затемнении светлая неоморфная тень даёт белый ореол;
+   прозрачный слой нужен только чтобы закрыть меню тапом мимо. */
+.fab-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.fab-menu {
+  position: fixed;
+  right: var(--space-5);
+  bottom: calc(var(--space-5) + 58px + var(--space-4) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+  z-index: 51;
+  pointer-events: none;
+}
+
+.fab-menu--open {
+  pointer-events: auto;
+}
+
+.fab-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 48px;
+  padding: 0 var(--space-4) 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-round);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--neo-raised-sm);
+  opacity: 0;
+  transform: translateY(var(--fab-slide, 60px)) scale(0.6);
+  transform-origin: right center;
+  transition:
+    transform 0.22s ease,
+    opacity 0.18s ease;
+}
+
+/* Нижний пункт ближе к плюсику — выезжает первым и на меньшее расстояние,
+   при закрытии уезжает последним. */
+.fab-menu__item:nth-child(1) {
+  --fab-slide: 120px;
+  transition-delay: 0s;
+}
+
+.fab-menu__item:nth-child(2) {
+  --fab-slide: 60px;
+  transition-delay: 0.04s;
+}
+
+.fab-menu--open .fab-menu__item {
+  opacity: 1;
+  transform: none;
+}
+
+.fab-menu--open .fab-menu__item:nth-child(1) {
+  transition-delay: 0.05s;
+}
+
+.fab-menu--open .fab-menu__item:nth-child(2) {
+  transition-delay: 0s;
+}
+
+.fab-menu__item:disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+.fab-menu__icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--fs-16);
+}
+
+.fab-menu__item:disabled .fab-menu__icon {
+  background: var(--neutral);
 }
 
 /* ---------- Инпуты ---------- */

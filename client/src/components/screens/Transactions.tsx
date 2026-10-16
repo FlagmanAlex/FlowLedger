@@ -60,6 +60,7 @@ export function Transactions() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [editingTransfer, setEditingTransfer] = useState<Transaction | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => currentMonthKey());
 
   /** Разные кошельки/категории — разная история, при смене фильтра сбрасываем
@@ -83,9 +84,11 @@ export function Transactions() {
   const debtById = new Map((debts ?? []).map((d) => [d.id, d]));
   const counterpartyById = new Map((counterparties ?? []).map((c) => [c.id, c]));
   const activeWallets = (wallets ?? []).filter((w) => !w.archived);
-  /** Перевод из журнала кошелька: отправитель по умолчанию — этот кошелёк. */
-  const canTransfer =
-    Boolean(walletId) && activeWallets.length >= 2 && activeWallets.some((w) => w.id === walletId);
+  /** Перевод доступен из любого журнала, если есть хотя бы два активных
+   *  кошелька. Из журнала кошелька отправитель по умолчанию — этот кошелёк,
+   *  из общего журнала — без подстановки. */
+  const canTransfer = activeWallets.length >= 2;
+  const transferFromWalletId = activeWallets.some((w) => w.id === walletId) ? walletId : undefined;
   const walletNameCounts = new Map<string, number>();
   for (const w of wallets ?? []) {
     walletNameCounts.set(w.name, (walletNameCounts.get(w.name) ?? 0) + 1);
@@ -133,11 +136,6 @@ export function Transactions() {
     <div className="page">
       <div className="page__header">
         <h1 className="page__title">Журнал</h1>
-        {canTransfer && (
-          <button type="button" className="neo-button neo-button--sm" onClick={() => setShowTransfer(true)}>
-            Перевод
-          </button>
-        )}
       </div>
 
       <select
@@ -297,8 +295,48 @@ export function Transactions() {
         ))}
       </section>
 
-      <button type="button" className="fab" onClick={() => openAdd('expense')} aria-label="Добавить операцию">
-        +
+      {/* Плюсик разворачивает меню: доход/расход или перевод. Одинаково в
+          общем журнале и в журнале кошелька — во втором случае кошелёк
+          подставляется по умолчанию в обе формы. */}
+      {fabOpen && <div className="fab-menu-overlay" onClick={() => setFabOpen(false)} />}
+      <div className={`fab-menu${fabOpen ? ' fab-menu--open' : ''}`} role="menu" aria-hidden={!fabOpen}>
+        <button
+          type="button"
+          role="menuitem"
+          className="fab-menu__item"
+          tabIndex={fabOpen ? 0 : -1}
+          onClick={() => {
+            setFabOpen(false);
+            openAdd('expense');
+          }}
+        >
+          <span className="fab-menu__icon">±</span>
+          Доход / расход
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className="fab-menu__item"
+          disabled={!canTransfer}
+          tabIndex={fabOpen ? 0 : -1}
+          title={canTransfer ? undefined : 'Для перевода нужно минимум два кошелька'}
+          onClick={() => {
+            setFabOpen(false);
+            setShowTransfer(true);
+          }}
+        >
+          <span className="fab-menu__icon">⇄</span>
+          Перевод
+        </button>
+      </div>
+      <button
+        type="button"
+        className={`fab${fabOpen ? ' fab--open' : ''}`}
+        onClick={() => setFabOpen((v) => !v)}
+        aria-label={fabOpen ? 'Закрыть меню' : 'Добавить операцию'}
+        aria-expanded={fabOpen}
+      >
+        <span className="fab__icon">+</span>
       </button>
 
       {showAdd && (
@@ -330,7 +368,7 @@ export function Transactions() {
           user={user}
           ownerId={ownerId}
           wallets={activeWallets}
-          defaultFromWalletId={walletId}
+          defaultFromWalletId={transferFromWalletId}
           onClose={() => setShowTransfer(false)}
         />
       )}

@@ -15,7 +15,6 @@ import { IconCircle } from '@/components/ui/IconCircle';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { ReorderableList, type DragHandleProps } from '@/components/ui/ReorderableList';
 import { WalletModal } from '@/components/ui/WalletModal';
-import { TransferModal } from '@/components/ui/TransferModal';
 import { QueryError } from '@/components/ui/QueryError';
 import { colorForId } from '@/lib/palette';
 import { formatAmount } from '@/lib/format';
@@ -24,7 +23,7 @@ import './forms.css';
 
 export function Wallets() {
   const navigate = useNavigate();
-  const { user, ownerId } = useOutletContext<MainOutletContext>();
+  const { ownerId } = useOutletContext<MainOutletContext>();
   const { data: wallets, isLoading, error } = useWallets(ownerId);
   const { data: holders, error: holdersError } = useHolders(ownerId);
   const rubRates = useCombinedRubRates(ownerId, wallets);
@@ -33,7 +32,6 @@ export function Wallets() {
   const [openWalletId, setOpenWalletId] = useState<string | null>(null);
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
   const [showCreateWallet, setShowCreateWallet] = useState(false);
-  const [showTransfer, setShowTransfer] = useState(false);
 
   const activeWallets = wallets?.filter((w) => !w.archived) ?? [];
   const archivedWallets = wallets?.filter((w) => w.archived) ?? [];
@@ -134,11 +132,6 @@ export function Wallets() {
       <div className="page__header">
         <h1 className="page__title">Кошельки</h1>
         <div className="wallets-header-actions">
-          {activeWallets.length >= 2 && (
-            <button type="button" className="neo-button neo-button--sm" onClick={() => setShowTransfer(true)}>
-              Перевод
-            </button>
-          )}
           <button
             type="button"
             className="neo-button neo-button--sm neo-button--accent"
@@ -227,14 +220,6 @@ export function Wallets() {
 
       {showCreateWallet && <WalletModal ownerId={ownerId} onClose={() => setShowCreateWallet(false)} />}
 
-      {showTransfer && (
-        <TransferModal
-          user={user}
-          ownerId={ownerId}
-          wallets={activeWallets}
-          onClose={() => setShowTransfer(false)}
-        />
-      )}
     </div>
   );
 }
