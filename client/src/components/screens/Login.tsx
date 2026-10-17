@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { signInWithGoogleIdToken } from '@flowledger/shared';
 import { renderGoogleButton } from '@/lib/googleIdentity';
 import { getStoredTheme } from '@/lib/theme';
+import logoUrl from '@/assets/logo.svg';
 import './Login.css';
 
 /** Вход: кнопка Google Identity Services → Google id_token → сессия на
@@ -45,7 +46,7 @@ export function Login() {
 
   return (
     <div className="login-screen">
-      <div className="login-badge">FL</div>
+      <img className="login-badge" src={logoUrl} alt="" />
       <div>
         <h1 className="login-title">FlowLedger</h1>
         <p className="login-subtitle">Учёт доходов и расходов</p>
