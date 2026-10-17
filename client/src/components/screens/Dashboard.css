@@ -99,6 +99,36 @@
   gap: var(--space-3);
 }
 
+/* Расходы по категориям, сгруппированные по держателю кошелька. */
+.holder-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.holder-group__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--divider);
+}
+
+.holder-group__name {
+  font-size: var(--fs-15);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+}
+
+.holder-group__total {
+  font-size: var(--fs-13);
+  font-weight: var(--fw-bold);
+  color: var(--negative);
+  white-space: nowrap;
+}
+
 .trend-header {
   display: flex;
   justify-content: space-between;

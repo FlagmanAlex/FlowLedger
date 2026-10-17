@@ -23,6 +23,9 @@ import './Dashboard.css';
 
 const MAIN_CURRENCY = 'RUB';
 
+/** Ключ группы «Расходы по категориям» для кошельков без держателя. */
+const NO_HOLDER = '__none__';
+
 function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
@@ -156,16 +159,13 @@ export function Dashboard() {
   const rubWalletIds = new Set(
     (wallets ?? []).filter((w) => w.currency === MAIN_CURRENCY).map((w) => w.id),
   );
-  const monthExpenseByCategory = new Map<string, number>();
   const monthIncomeByCategory = new Map<string, number>();
   let monthExpenseTotal = 0;
   let monthIncomeTotal = 0;
   for (const t of monthTransactions ?? []) {
     if (!rubWalletIds.has(t.walletId)) continue;
     if (t.type === 'expense' && t.categoryId) {
-      const amount = Math.abs(t.amount);
-      monthExpenseByCategory.set(t.categoryId, (monthExpenseByCategory.get(t.categoryId) ?? 0) + amount);
-      monthExpenseTotal += amount;
+      monthExpenseTotal += Math.abs(t.amount);
     } else if (t.type === 'income' && t.categoryId) {
       const amount = Math.abs(t.amount);
       monthIncomeByCategory.set(t.categoryId, (monthIncomeByCategory.get(t.categoryId) ?? 0) + amount);
@@ -176,8 +176,33 @@ export function Dashboard() {
     Array.from(map.entries())
       .map(([categoryId, total]) => ({ categoryId, total }))
       .sort((a, b) => b.total - a.total);
-  const monthExpenseList = toSortedTotals(monthExpenseByCategory);
   const monthIncomeList = toSortedTotals(monthIncomeByCategory);
+
+  /** Расходы по категориям — группами по держателю кошелька (Wallet.holderId),
+   *  у каждой группы своё «Итого» и свои проценты полосок (доля внутри
+   *  группы). Порядок групп — как в списке держателей, кошельки без
+   *  держателя — отдельной группой в конце. */
+  const holderById = new Map((holders ?? []).map((h) => [h.id, h]));
+  const expenseByHolder = new Map<string, Map<string, number>>();
+  for (const t of monthTransactions ?? []) {
+    if (!rubWalletIds.has(t.walletId) || t.type !== 'expense' || !t.categoryId) continue;
+    const holderId = walletById.get(t.walletId)?.holderId;
+    const key = holderId && holderById.has(holderId) ? holderId : NO_HOLDER;
+    const byCategory = expenseByHolder.get(key) ?? new Map<string, number>();
+    byCategory.set(t.categoryId, (byCategory.get(t.categoryId) ?? 0) + Math.abs(t.amount));
+    expenseByHolder.set(key, byCategory);
+  }
+  const expenseGroups = [...(holders ?? []).map((h) => h.id), NO_HOLDER]
+    .filter((key) => expenseByHolder.has(key))
+    .map((key) => {
+      const items = toSortedTotals(expenseByHolder.get(key)!);
+      return {
+        key,
+        name: key === NO_HOLDER ? 'Без владельца' : holderById.get(key)!.name,
+        items,
+        total: items.reduce((sum, c) => sum + c.total, 0),
+      };
+    });
 
   /** Долги на дашборде — одна строка на контрагента (сумма нетто: что он
    *  должен мне минус что я должен ему), а не строка на каждый Debt, как на
@@ -344,25 +369,37 @@ export function Dashboard() {
 
       <section className="neo-card">
         <h2 className="section-title">Расходы по категориям</h2>
-        {monthExpenseList.length === 0 ? (
+        {expenseGroups.length === 0 ? (
           <p className="state-message">Нет данных за этот месяц</p>
         ) : (
-          <div className="category-list">
-            {monthExpenseList.map((c) => (
-              <Link
-                key={c.categoryId}
-                to={`/transactions?categoryId=${c.categoryId}`}
-                className="card-link"
-              >
-                <CategoryBar
-                  name={categoryById.get(c.categoryId)?.name ?? 'Без категории'}
-                  icon={categoryById.get(c.categoryId)?.icon}
-                  amount={c.total}
-                  currency={MAIN_CURRENCY}
-                  percent={(c.total / (monthExpenseTotal || 1)) * 100}
-                  color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
-                />
-              </Link>
+          <div className="holder-groups">
+            {expenseGroups.map((group) => (
+              <div key={group.key} className="holder-group">
+                <div className="holder-group__header">
+                  <span className="holder-group__name">{group.name}</span>
+                  <span className="holder-group__total">
+                    Итого: {formatAmount(group.total)} {MAIN_CURRENCY}
+                  </span>
+                </div>
+                <div className="category-list">
+                  {group.items.map((c) => (
+                    <Link
+                      key={c.categoryId}
+                      to={`/transactions?categoryId=${c.categoryId}`}
+                      className="card-link"
+                    >
+                      <CategoryBar
+                        name={categoryById.get(c.categoryId)?.name ?? 'Без категории'}
+                        icon={categoryById.get(c.categoryId)?.icon}
+                        amount={c.total}
+                        currency={MAIN_CURRENCY}
+                        percent={(c.total / (group.total || 1)) * 100}
+                        color={categoryById.get(c.categoryId)?.color ?? colorForId(c.categoryId)}
+                      />
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
