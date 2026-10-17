@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { signOut, useAuth, useOwnerId, type UseAuthResult } from '@flowledger/shared';
+import logoUrl from '@/assets/logo.svg';
 import './MainLayout.css';
 
 /** Контекст, который экраны внутри MainLayout читают через useOutletContext.
@@ -31,7 +32,7 @@ export function MainLayout() {
     <div className="app-shell">
       <div className="topbar">
         <Link to="/" className="sidebar__brand" onClick={() => setIsMenuOpen(false)}>
-          <div className="sidebar__badge">FL</div>
+          <img className="sidebar__badge" src={logoUrl} alt="" />
           <span className="sidebar__title">FlowLedger</span>
         </Link>
 
@@ -54,7 +55,7 @@ export function MainLayout() {
 
       <aside className={`sidebar${isMenuOpen ? ' is-open' : ''}`}>
         <Link to="/" className="sidebar__brand" onClick={() => setIsMenuOpen(false)}>
-          <div className="sidebar__badge">FL</div>
+          <img className="sidebar__badge" src={logoUrl} alt="" />
           <span className="sidebar__title">FlowLedger</span>
         </Link>
 

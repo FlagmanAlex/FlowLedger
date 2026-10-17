@@ -30,17 +30,11 @@
 }
 
 .sidebar__badge {
+  display: block;
   width: 40px;
   height: 40px;
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  border-radius: 20%;
   box-shadow: var(--neo-raised-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--fs-16);
-  font-weight: var(--fw-heavy);
-  color: var(--accent);
   flex-shrink: 0;
 }
 
